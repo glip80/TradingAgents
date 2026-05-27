@@ -115,7 +115,7 @@ Wave FINAL:
 
 ## TODOs
 
-- [ ] 1. **Add TA-Lib dependency + adapt FeatureCalculator**
+- [x] 1. **Add TA-Lib dependency + adapt FeatureCalculator**
 
   **What to do**:
   - Add `ta-lib` to `pyproject.toml` dependencies
@@ -179,7 +179,7 @@ Wave FINAL:
   - Message: `feat(data): add TA-Lib FeatureCalculator with 90+ indicators`
   - Files: `tradingagents/dataflows/feature_calculator.py`, `pyproject.toml`
 
-- [ ] 2. **Add yfinance fundamental data caching**
+- [x] 2. **Add yfinance fundamental data caching**
 
   **What to do**:
   - Add caching helper function in `tradingagents/dataflows/y_finance.py`:
@@ -244,7 +244,7 @@ Wave FINAL:
   - Message: `perf(data): add 24h disk cache for yfinance fundamental data`
   - Files: `tradingagents/dataflows/y_finance.py`, `tradingagents/default_config.py`
 
-- [ ] 3. **Replace get_indicators with TA-Lib FeatureCalculator**
+- [x] 3. **Replace get_indicators with TA-Lib FeatureCalculator**
 
   **What to do**:
   - In `tradingagents/agents/utils/technical_indicators_tools.py`:
@@ -301,7 +301,7 @@ Wave FINAL:
   - Message: `feat(indicators): replace stockstats with TA-Lib FeatureCalculator (90+ features)`
   - Files: `tradingagents/agents/utils/technical_indicators_tools.py`
 
-- [ ] 4. **Update market analyst prompt for richer indicator set**
+- [x] 4. **Update market analyst prompt for richer indicator set**
 
   **What to do**:
   - In `tradingagents/agents/analysts/market_analyst.py`:
@@ -335,7 +335,7 @@ Wave FINAL:
   - Message: `docs(market): update indicator catalog for TA-Lib 90+ features`
   - Files: `tradingagents/agents/analysts/market_analyst.py`
 
-- [ ] 5. **Tests for FeatureCalculator + cache**
+- [x] 5. **Tests for FeatureCalculator + cache**
 
   **What to do**:
   - Create `tests/test_feature_calculator.py`:
@@ -359,11 +359,11 @@ Wave FINAL:
 
 ## Final Verification Wave (MANDATORY — after ALL implementation tasks)
 
-- [ ] F1. **Full Test Suite** — `unspecified-high`
+- [x] F1. **Full Test Suite** — `unspecified-high`
   Run `.venv/bin/python -m pytest tests/ -ra -q`. All 266+ tests must pass. Verify no regressions from stockstats→TA-Lib switch.
   Output: `Tests [N pass/N fail] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Performance Benchmark** — `unspecified-high`
+- [x] F2. **Performance Benchmark** — `unspecified-high`
   Run market analysis with TA-Lib path and measure:
   - Time for `get_indicators` (all 29 indicators): should be < 1s (was ~2s per indicator)
   - Time for `get_fundamentals` with warm cache: should be < 0.1s (was ~2s for API call)

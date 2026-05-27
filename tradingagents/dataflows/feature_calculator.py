@@ -1,12 +1,42 @@
 import os
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-import talib  # Import TA-Lib for candlestick patterns
 
-from trend_predictor.utils import setup_logging
+from tradingagents.logging import get_logger
 
-logger = setup_logging()
+# sklearn is an optional dependency (used for TSF calculation)
+try:
+    from sklearn.linear_model import LinearRegression
+    _sklearn_available = True
+except ImportError:
+    LinearRegression = None
+    _sklearn_available = False
+    get_logger(__name__).warning("scikit-learn not installed. TSF indicators will return NaN.")
+
+logger = get_logger(__name__)
+
+# Graceful TA-Lib availability check
+try:
+    import talib
+    _ta_available = True
+except ImportError:
+    _ta_available = False
+    logger.warning("TA-Lib not installed. Candlestick patterns and TA-Lib indicators unavailable.")
+
+STOCKSTATS_TO_TALIB = {
+    "close_50_sma": "SMA50",
+    "close_200_sma": "SMA200",
+    "close_10_ema": "EMA10",
+    "macd": "outMACD",
+    "macds": "outMACDSignal",
+    "macdh": "outMACDHist",
+    "rsi": "RSI14",
+    "boll": "BBANDSMIDDLE",
+    "boll_ub": "BBANDSUPPER",
+    "boll_lb": "BBANDSLOWER",
+    "atr": "ATR14",
+    "vwma": "VWMA",
+}
 
 
 class FeatureCalculator:
@@ -80,6 +110,7 @@ class FeatureCalculator:
         "OBV",
         "RSI6",
         "RSI12",
+        "RSI14",
         "SMA3",
         "EMA6",
         "EMA12",
@@ -142,6 +173,9 @@ class FeatureCalculator:
 
     def _calculate_tsf(self, period):
         """Calculates the Time Series Forecast (Linear Regression)."""
+        if not _sklearn_available:
+            return pd.Series([np.nan] * len(self.data), index=self.data.index)
+
         tsf = [np.nan] * (period - 1)
         model = LinearRegression()
         prices = self.data[self._close_column].values
@@ -156,6 +190,9 @@ class FeatureCalculator:
 
     def _calculate_candlestick_patterns(self):
         """Calculates the specified TA-Lib candlestick patterns."""
+        if not _ta_available:
+            raise RuntimeError("TA-Lib not available")
+
         open_col = self.data[self._open_column]
         high_col = self.data[self._high_column]
         low_col = self.data[self._low_column]
@@ -222,6 +259,8 @@ class FeatureCalculator:
 
     def calculate_features(self):
         """Calculates all required technical indicators and adds them to the DataFrame."""
+        if not _ta_available:
+            raise RuntimeError("TA-Lib not available")
 
         close = self.data[self._close_column].values.astype(np.float64)
         high = self.data[self._high_column].values.astype(np.float64)
@@ -257,6 +296,7 @@ class FeatureCalculator:
         # RSI: Relative Strength Index
         self.data["RSI6"] = pd.Series(talib.RSI(close, timeperiod=6), index=index)
         self.data["RSI12"] = pd.Series(talib.RSI(close, timeperiod=12), index=index)
+        self.data["RSI14"] = pd.Series(talib.RSI(close, timeperiod=14), index=index)
         # CCI: Commodity Channel Index
         self.data["CCI12"] = pd.Series(
             talib.CCI(high, low, close, timeperiod=12), index=index
@@ -327,30 +367,3 @@ class FeatureCalculator:
         # self._calculate_candlestick_patterns()
 
         return self.data
-
-
-# Example Usage (Optional - for testing)
-if __name__ == "__main__":
-    # Create dummy data or load from CSV
-    # Example: Load the previously created CSV
-    try:
-        data_path = "data/fmp/aapl_eod_data.csv"
-        if not os.path.exists(data_path):
-            logger.debug("Output folder '%s' does not exist, creating it.", data_path)
-        df = pd.read_csv(data_path)
-        calculator = FeatureCalculator(df)
-        features_df = calculator.calculate_features()
-
-        path_featured = "data/featured/aapl_feat.csv"
-        if not os.path.exists(data_path):
-            os.makedirs(os.path.dirname(path_featured), exist_ok=True)
-        features_df.to_csv(path_featured, index=True)
-        logger.info("Features calculated successfully:")
-        logger.info(f"\n{features_df.head()}")
-        logger.info(f"Shape after calculation: {features_df.shape}")
-        logger.info("Columns:")
-        logger.info(f"{features_df.columns}")
-    except FileNotFoundError:
-        logger.error(f"{data_path} not found. Cannot run example usage.")
-    except Exception as e:
-        logger.error(f"An error occurred during example usage: {e}")
