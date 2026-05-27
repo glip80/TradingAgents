@@ -1,0 +1,11 @@
+QA Evidence — Task 1: Concurrency Quick-Win
+
+1. default_config.py:77 — "analyst_concurrency_limit": 4 ✅
+2. run_analysis() signature — analyst_concurrency_limit: Optional[int] = None ✅
+3. run_analysis() body — config override via if not None pattern ✅
+4. analyze() command — --concurrency typer.Option added ✅
+5. analyze() call — analyst_concurrency_limit=concurrency passed ✅
+6. lsp_diagnostics — both files clean (pre-existing warnings only) ✅
+
+CLI test (dry-run): tradingagents --ticker SPY --concurrency 4 → passes concurrency through
+Default (no flag): uses config default of 4

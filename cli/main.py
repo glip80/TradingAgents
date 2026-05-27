@@ -476,6 +476,7 @@ def get_user_selections(
     openai_reasoning_effort: Optional[str] = None,
     anthropic_effort: Optional[str] = None,
     output_language: Optional[str] = None,
+    risk_depth: Optional[int] = None,
 ):
     """Get all user selections. Skips prompts if values are provided."""
     
@@ -683,6 +684,7 @@ def get_user_selections(
         "openai_reasoning_effort": openai_reasoning_effort,
         "anthropic_effort": anthropic_effort,
         "output_language": output_language,
+        "risk_depth": risk_depth,
     }
 
 
@@ -1036,6 +1038,7 @@ def run_analysis(
     openai_reasoning_effort: Optional[str] = None,
     anthropic_effort: Optional[str] = None,
     output_language: Optional[str] = None,
+    risk_depth: Optional[int] = None,
 ):
     # First get all user selections
     selections = get_user_selections(
@@ -1051,6 +1054,7 @@ def run_analysis(
         openai_reasoning_effort=openai_reasoning_effort,
         anthropic_effort=anthropic_effort,
         output_language=output_language,
+        risk_depth=risk_depth,
     )
 
     # Initialize structured logger with run context
@@ -1075,8 +1079,10 @@ def run_analysis(
 
     # Create config with selected research depth
     config = DEFAULT_CONFIG.copy()
+    if analyst_concurrency_limit is not None:
+        config["analyst_concurrency_limit"] = analyst_concurrency_limit
     config["max_debate_rounds"] = selections["research_depth"]
-    config["max_risk_discuss_rounds"] = selections["research_depth"]
+    config["max_risk_discuss_rounds"] = selections.get("risk_depth", 1)
     config["quick_think_llm"] = selections["shallow_thinker"]
     config["deep_think_llm"] = selections["deep_thinker"]
     config["backend_url"] = selections["backend_url"]
@@ -1395,6 +1401,7 @@ def analyze(
     date: Optional[str] = typer.Option(None, "--date", "-d", help="Analysis date (YYYY-MM-DD)"),
     analysts: Optional[List[AnalystType]] = typer.Option(None, "--analyst", "-a", help="Analysts to include (can be specified multiple times)"),
     depth: Optional[int] = typer.Option(None, "--depth", help="Research depth level (number of debate rounds)"),
+    risk_depth: Optional[int] = typer.Option(1, "--risk-depth", help="Risk debate rounds (default: 1)"),
     provider: Optional[str] = typer.Option(None, "--provider", help="LLM provider (openai, google, anthropic, openrouter)"),
     backend_url: Optional[str] = typer.Option(None, "--backend-url", help="Custom backend URL for LLM provider"),
     shallow_thinker: Optional[str] = typer.Option(None, "--shallow-thinker", help="LLM model for shallow thinking tasks"),
@@ -1403,6 +1410,7 @@ def analyze(
     google_thinking_level: Optional[str] = typer.Option(None, "--google-thinking-level", help="Gemini thinking level"),
     openai_reasoning_effort: Optional[str] = typer.Option(None, "--openai-reasoning-effort", help="OpenAI reasoning effort"),
     anthropic_effort: Optional[str] = typer.Option(None, "--anthropic-effort", help="Anthropic effort level"),
+    concurrency: Optional[int] = typer.Option(None, "--concurrency", help="Analyst concurrency limit (1-4, default: 4)"),
     checkpoint: bool = typer.Option(
         False,
         "--checkpoint",
@@ -1433,6 +1441,8 @@ def analyze(
         openai_reasoning_effort=openai_reasoning_effort,
         anthropic_effort=anthropic_effort,
         output_language=language,
+        risk_depth=risk_depth,
+        analyst_concurrency_limit=concurrency,
     )
 
 

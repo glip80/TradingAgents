@@ -1,0 +1,23 @@
+{
+  "active_plan": "/Users/alex/PycharmProjects/TradingAgents/.sisyphus/plans/quick-wins.md",
+  "started_at": "2026-05-27T17:40:05.623Z",
+  "session_ids": [
+    "ses_195bf564cffeLQZgS4oQqRJcDl"
+  ],
+  "session_origins": {
+    "ses_195bf564cffeLQZgS4oQqRJcDl": "direct"
+  },
+  "plan_name": "quick-wins",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**Raise analyst concurrency default + expose CLI flag**",
+      "session_id": "ses_195785746ffecjU3Ey3syIMzds",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-27T17:44:01.687Z"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+=== Task 3 QA Evidence: --risk-depth CLI flag ===
+
+1. --help output confirms --risk-depth with [default: 1]:
+   --risk-depth                    INTEGER  Risk debate rounds (default: 1) [default: 1]
+
+2. LSP diagnostics: zero new errors (only pre-existing star-import warnings)
+
+3. Code changes verified manually:
+   - analyze() command: risk_depth = typer.Option(1, "--risk-depth", ...)  ✓
+   - run_analysis() signature: added risk_depth: Optional[int] = None      ✓
+   - run_analysis() passes risk_depth to get_user_selections()            ✓
+   - run_analysis() passes risk_depth to analyze() call                   ✓
+   - get_user_selections() signature: added risk_depth param              ✓
+   - get_user_selections() returns "risk_depth": risk_depth in dict       ✓
+   - config["max_risk_discuss_rounds"] = selections.get("risk_depth", 1)  ✓
+   - analyze() call: risk_depth=risk_depth added                          ✓
+
+4. Default behavior: risk_depth defaults to 1 (explicit, not None)
+   max_debate_rounds still uses research_depth (unchanged)
+
+5. Files modified: cli/main.py (only)
