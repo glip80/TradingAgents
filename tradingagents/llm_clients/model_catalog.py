@@ -154,13 +154,21 @@ MODEL_OPTIONS: ProviderModeOptions = {
     "minimax": _MINIMAX_MODELS,
     "minimax-cn": _MINIMAX_MODELS,
     # OpenRouter: fetched dynamically. Azure: any deployed model name.
-    # Ollama display labels intentionally omit a "local" marker — the
-    # endpoint is now configurable via OLLAMA_BASE_URL, so the same labels
-    # apply whether the user runs ollama-serve on localhost or against a
-    # remote host. The actual resolved endpoint is surfaced separately by
-    # cli.utils.confirm_ollama_endpoint() right after provider selection.
-    # "Custom model ID" lets users pick any model they have pulled via
-    # `ollama pull` beyond the three suggested defaults.
+    "lm_studio": {
+        "quick": [
+            ("Qwen 3.6 27B (local)", "qwen3.6-27b-mtp"),
+            ("Qwen 3 Coder 30B (local)", "qwen3-coder-30b-a3b-instruct"),
+            ("FinGPT MT Llama 3 8B (local)", "fingpt-mt-llama-3-8b-lora"),
+            ("Custom model ID", "custom"),
+        ],
+        "deep": [
+            ("Qwen 3.6 35B (local)", "qwopus3.6-35b-a3b-v1"),
+            ("Liquid LFM 2 24B (local)", "liquid/lfm2-24b-a2b"),
+            ("Google Gemma 4 26B (local)", "google/gemma-4-26b-a4b"),
+            ("Qwen 3.6 27B (local)", "qwen3.6-27b-mtp"),
+            ("Custom model ID", "custom"),
+        ],
+    },
     "ollama": {
         "quick": [
             ("Qwen3:latest (8B)", "qwen3:latest"),
@@ -173,6 +181,19 @@ MODEL_OPTIONS: ProviderModeOptions = {
             ("GPT-OSS:latest (20B)", "gpt-oss:latest"),
             ("Qwen3:latest (8B)", "qwen3:latest"),
             ("Custom model ID", "custom"),
+        ],
+    },
+    "lm-studio": {
+        "quick": [
+            ("Qwen2.5 7B - Fast, quality small model", "qwen2.5-7b"),
+            ("Mistral 7B - Balanced performance", "mistral-7b"),
+            ("Neural Chat 7B - Optimized for chat", "neural-chat-7b"),
+        ],
+        "deep": [
+            ("Qwen2.5 32B - High quality reasoning", "qwen2.5-32b"),
+            ("Llama 3.1 70B - Most capable local", "llama-3.1-70b"),
+            ("Qwen2.5 7B - Fast, quality small model", "qwen2.5-7b"),
+            ("Mistral 7B - Balanced performance", "mistral-7b"),
         ],
     },
 }

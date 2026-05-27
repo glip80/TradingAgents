@@ -6,6 +6,7 @@ from langgraph.prebuilt import ToolNode
 
 from tradingagents.agents import *
 from tradingagents.agents.utils.agent_states import AgentState
+from tradingagents.logging import get_logger
 
 from .analyst_execution import build_analyst_execution_plan
 from .conditional_logic import ConditionalLogic
@@ -28,6 +29,7 @@ class GraphSetup:
         self.tool_nodes = tool_nodes
         self.conditional_logic = conditional_logic
         self.analyst_concurrency_limit = analyst_concurrency_limit
+        self._slog = get_logger(__name__)
 
     def setup_graph(
         self, selected_analysts=["market", "social", "news", "fundamentals"]
@@ -153,5 +155,11 @@ class GraphSetup:
         )
 
         workflow.add_edge("Portfolio Manager", END)
+
+        self._slog.debug(
+            "Graph setup complete",
+            analysts=",".join(selected_analysts),
+            nodes=str(len(analyst_nodes) + 8),
+        )
 
         return workflow

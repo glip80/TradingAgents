@@ -11,6 +11,8 @@ import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
+from tradingagents.logging import get_logger
+
 from langgraph.prebuilt import ToolNode
 
 from tradingagents.llm_clients import create_llm_client
@@ -99,6 +101,14 @@ class TradingAgentsGraph:
         self.deep_thinking_llm = deep_client.get_llm()
         self.quick_thinking_llm = quick_client.get_llm()
         
+        slog = get_logger(__name__)
+        slog.debug(
+            "Graph initialized",
+            provider=self.config["llm_provider"],
+            deep_model=self.config["deep_think_llm"],
+            quick_model=self.config["quick_think_llm"],
+            analysts=",".join(selected_analysts),
+        )
         self.memory_log = TradingMemoryLog(self.config)
 
         # Create tool nodes
@@ -235,17 +245,37 @@ class TradingAgentsGraph:
                 return None, None, None
 
             actual_days = min(holding_days, len(stock) - 1, len(bench) - 1)
+            
+            # Validate prices before division to prevent zero-division errors
+            stock_open = float(stock["Close"].iloc[0])
+            bench_open = float(bench["Close"].iloc[0])
+            
+            if stock_open <= 0 or bench_open <= 0:
+                logger.warning(
+                    "Invalid price data for %s on %s (open price <= 0)",
+                    ticker, trade_date,
+                )
+                return None, None, None
+            
             raw = float(
-                (stock["Close"].iloc[actual_days] - stock["Close"].iloc[0])
-                / stock["Close"].iloc[0]
+                (stock["Close"].iloc[actual_days] - stock_open)
+                / stock_open
             )
             bench_ret = float(
-                (bench["Close"].iloc[actual_days] - bench["Close"].iloc[0])
-                / bench["Close"].iloc[0]
+                (bench["Close"].iloc[actual_days] - bench_open)
+                / bench_open
             )
             alpha = raw - bench_ret
             return raw, alpha, actual_days
+        except (ValueError, KeyError) as e:
+            # ValueError: Invalid date format; KeyError: Missing 'Close' column
+            logger.warning(
+                "Invalid data for %s on %s: %s",
+                ticker, trade_date, e,
+            )
+            return None, None, None
         except Exception as e:
+            # Transient errors (network, etc.) - will retry next run
             logger.warning(
                 "Could not resolve outcome for %s on %s vs %s (will retry next run): %s",
                 ticker, trade_date, benchmark, e,
@@ -258,6 +288,7 @@ class TradingAgentsGraph:
         Fetches returns for each same-ticker pending entry, generates reflections,
         then writes all updates in a single atomic batch write to avoid redundant I/O.
         Skips entries whose price data is not yet available (too recent or delisted).
+        Marks entries as unresolvable after max retry attempts to prevent infinite loops.
 
         Trade-off: only same-ticker entries are resolved per run.  Entries for
         other tickers accumulate until that ticker is run again.
@@ -268,12 +299,29 @@ class TradingAgentsGraph:
 
         benchmark = self._resolve_benchmark(ticker)
         updates = []
+        unresolvable = []
+        max_retry_days = 30  # Mark as failed if >30 days have passed without data
+        
         for entry in pending:
             raw, alpha, days = self._fetch_returns(
                 ticker, entry["date"], benchmark=benchmark,
             )
             if raw is None:
-                continue  # price not available yet — try again next run
+                # Check if this entry has been pending too long (data probably unavailable)
+                from datetime import datetime as dt
+                entry_date = dt.strptime(entry["date"], "%Y-%m-%d")
+                days_pending = (dt.now() - entry_date).days
+                
+                if days_pending > max_retry_days:
+                    # Mark as unresolvable after max retries
+                    unresolvable.append({
+                        "ticker": ticker,
+                        "trade_date": entry["date"],
+                        "outcome": "outcome_unavailable",
+                        "reason": f"Data unavailable after {days_pending} days (likely delisted or data issue)",
+                    })
+                continue  # Otherwise try again next run
+            
             reflection = self.reflector.reflect_on_final_decision(
                 final_decision=entry.get("decision", ""),
                 raw_return=raw,
@@ -291,6 +339,8 @@ class TradingAgentsGraph:
 
         if updates:
             self.memory_log.batch_update_with_outcomes(updates)
+        if unresolvable:
+            self.memory_log.batch_mark_unresolvable(unresolvable)
 
     def propagate(self, company_name, trade_date, asset_type: str = "stock"):
         """Run the trading agents graph for a company on a specific date.
@@ -303,6 +353,8 @@ class TradingAgentsGraph:
         successful node on a subsequent invocation with the same ticker+date.
         """
         self.ticker = company_name
+        slog = get_logger(__name__)
+        slog.info("Propagate started", ticker=company_name, date=trade_date)
 
         # Resolve any pending memory-log entries for this ticker before the pipeline runs.
         self._resolve_pending_entries(company_name)

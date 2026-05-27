@@ -28,6 +28,7 @@ from tradingagents.graph.analyst_execution import (
     sync_analyst_tracker_from_chunk,
 )
 from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.logging import get_logger
 from cli.models import AnalystType
 from cli.utils import *
 from cli.announcements import fetch_announcements, display_announcements
@@ -462,36 +463,59 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
     layout["footer"].update(Panel(stats_table, border_style="grey50"))
 
 
-def get_user_selections():
-    """Get all user selections before starting the analysis display."""
-    # Display ASCII art welcome message
-    with open(Path(__file__).parent / "static" / "welcome.txt", "r", encoding="utf-8") as f:
-        welcome_ascii = f.read()
+def get_user_selections(
+    ticker: Optional[str] = None,
+    analysis_date: Optional[str] = None,
+    analysts: Optional[List[AnalystType]] = None,
+    research_depth: Optional[int] = None,
+    llm_provider: Optional[str] = None,
+    backend_url: Optional[str] = None,
+    shallow_thinker: Optional[str] = None,
+    deep_thinker: Optional[str] = None,
+    google_thinking_level: Optional[str] = None,
+    openai_reasoning_effort: Optional[str] = None,
+    anthropic_effort: Optional[str] = None,
+    output_language: Optional[str] = None,
+):
+    """Get all user selections. Skips prompts if values are provided."""
+    
+    # If any parameter is missing, we might need to show the welcome screen
+    # but only if we are in interactive mode (i.e., at least one prompt will happen)
+    needs_prompts = any(v is None for v in [
+        ticker, analysis_date, analysts, research_depth, 
+        llm_provider, backend_url, shallow_thinker, deep_thinker,
+        output_language
+    ])
 
-    # Create welcome box content
-    welcome_content = f"{welcome_ascii}\n"
-    welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
-    welcome_content += "[bold]Workflow Steps:[/bold]\n"
-    welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
-    welcome_content += (
-        "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
-    )
+    if needs_prompts:
+        # Display ASCII art welcome message
+        with open(Path(__file__).parent / "static" / "welcome.txt", "r", encoding="utf-8") as f:
+            welcome_ascii = f.read()
 
-    # Create and center the welcome box
-    welcome_box = Panel(
-        welcome_content,
-        border_style="green",
-        padding=(1, 2),
-        title="Welcome to TradingAgents",
-        subtitle="Multi-Agents LLM Financial Trading Framework",
-    )
-    console.print(Align.center(welcome_box))
-    console.print()
-    console.print()  # Add vertical space before announcements
+        # Create welcome box content
+        welcome_content = f"{welcome_ascii}\n"
+        welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
+        welcome_content += "[bold]Workflow Steps:[/bold]\n"
+        welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
+        welcome_content += (
+            "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
+        )
 
-    # Fetch and display announcements (silent on failure)
-    announcements = fetch_announcements()
-    display_announcements(console, announcements)
+        # Create and center the welcome box
+        welcome_box = Panel(
+            welcome_content,
+            border_style="green",
+            padding=(1, 2),
+            title="Welcome to TradingAgents",
+            subtitle="Multi-Agents LLM Financial Trading Framework",
+        )
+        console.print(Align.center(welcome_box))
+        console.print()
+        console.print()  # Add vertical space before announcements
+
+        # Fetch and display announcements (silent on failure)
+        announcements = fetch_announcements()
+        display_announcements(console, announcements)
 
     # Create a boxed questionnaire for each step
     def create_question_box(title, prompt, default=None):
@@ -502,38 +526,40 @@ def get_user_selections():
         return Panel(box_content, border_style="blue", padding=(1, 2))
 
     # Step 1: Ticker symbol
-    console.print(
-        create_question_box(
-            "Step 1: Ticker Symbol",
-            "Enter the exact ticker symbol to analyze, including exchange suffix when needed (examples: SPY, CNC.TO, 7203.T, 0700.HK)",
-            "SPY",
+    if ticker is None:
+        console.print(
+            create_question_box(
+                "Step 1: Ticker Symbol",
+                "Enter the exact ticker symbol to analyze, including exchange suffix when needed (examples: SPY, CNC.TO, 7203.T, 0700.HK)",
+                "SPY",
+            )
         )
-    )
-    selected_ticker = get_ticker()
-    asset_type = detect_asset_type(selected_ticker)
-    console.print(
-        f"[green]Detected asset type:[/green] {asset_type.value}"
-    )
-
+        ticker = get_ticker()
+        asset_type = detect_asset_type(ticker)
+        console.print(
+            f"[green]Detected asset type:[/green] {asset_type.value}"
+        )
     # Step 2: Analysis date
-    default_date = datetime.datetime.now().strftime("%Y-%m-%d")
-    console.print(
-        create_question_box(
-            "Step 2: Analysis Date",
-            "Enter the analysis date (YYYY-MM-DD)",
-            default_date,
+    if analysis_date is None:
+        default_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        console.print(
+            create_question_box(
+                "Step 2: Analysis Date",
+                "Enter the analysis date (YYYY-MM-DD)",
+                default_date,
+            )
         )
-    )
-    analysis_date = get_analysis_date()
+        analysis_date = get_analysis_date()
 
     # Step 3: Output language
-    console.print(
-        create_question_box(
-            "Step 3: Output Language",
-            "Select the language for analyst reports and final decision"
+    if output_language is None:
+        console.print(
+            create_question_box(
+                "Step 3: Output Language",
+                "Select the language for analyst reports and final decision"
+            )
         )
-    )
-    output_language = ask_output_language()
+        output_language = ask_output_language()
 
     # Step 4: Select analysts
     console.print(
@@ -547,20 +573,39 @@ def get_user_selections():
     )
 
     # Step 5: Research depth
-    console.print(
-        create_question_box(
-            "Step 5: Research Depth", "Select your research depth level"
+    if research_depth is None:
+        console.print(
+            create_question_box(
+                "Step 5: Research Depth", "Select your research depth level"
+            )
         )
-    )
-    selected_research_depth = select_research_depth()
+        research_depth = select_research_depth()
 
     # Step 6: LLM Provider
-    console.print(
-        create_question_box(
-            "Step 6: LLM Provider", "Select your LLM provider"
+    if llm_provider is None:
+        console.print(
+            create_question_box(
+                "Step 6: LLM Provider", "Select your LLM provider"
+            )
         )
-    )
-    selected_llm_provider, backend_url = select_llm_provider()
+        llm_provider, backend_url = select_llm_provider()
+    elif backend_url is None:
+        # If llm_provider was provided but backend_url wasn't, we need to determine backend_url
+        # We can look it up from a predefined map (matching what's in select_llm_provider)
+        provider_urls = {
+            "openai": "https://api.openai.com/v1",
+            "google": None,
+            "anthropic": "https://api.anthropic.com/",
+            "xai": "https://api.x.ai/v1",
+            "deepseek": "https://api.deepseek.com",
+            "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "glm": "https://open.bigmodel.cn/api/paas/v4/",
+            "openrouter": "https://openrouter.ai/api/v1",
+            "azure": None,
+            "ollama": "http://localhost:11434/v1",
+            "lm-studio": "http://localhost:1234/v1",
+        }
+        backend_url = provider_urls.get(llm_provider.lower())
 
     # Providers with regional endpoints prompt for the region as a secondary
     # step so the main dropdown stays clean (mainland China and international
@@ -583,60 +628,64 @@ def get_user_selections():
     ensure_api_key(selected_llm_provider)
 
     # Step 7: Thinking agents
-    console.print(
-        create_question_box(
-            "Step 7: Thinking Agents", "Select your thinking agents for analysis"
+    if shallow_thinker is None:
+        console.print(
+            create_question_box(
+                "Step 7: Thinking Agents", "Select your thinking agents for analysis"
+            )
         )
-    )
-    selected_shallow_thinker = select_shallow_thinking_agent(selected_llm_provider)
-    selected_deep_thinker = select_deep_thinking_agent(selected_llm_provider)
+        shallow_thinker = select_shallow_thinking_agent(llm_provider)
+    
+    if deep_thinker is None:
+        deep_thinker = select_deep_thinking_agent(llm_provider)
 
     # Step 8: Provider-specific thinking configuration
-    thinking_level = None
-    reasoning_effort = None
-    anthropic_effort = None
-
-    provider_lower = selected_llm_provider.lower()
+    provider_lower = llm_provider.lower()
+    
     if provider_lower == "google":
-        console.print(
-            create_question_box(
-                "Step 8: Thinking Mode",
-                "Configure Gemini thinking mode"
+        if google_thinking_level is None:
+            console.print(
+                create_question_box(
+                    "Step 8: Thinking Mode",
+                    "Configure Gemini thinking mode"
+                )
             )
-        )
-        thinking_level = ask_gemini_thinking_config()
+            google_thinking_level = ask_gemini_thinking_config()
     elif provider_lower == "openai":
-        console.print(
-            create_question_box(
-                "Step 8: Reasoning Effort",
-                "Configure OpenAI reasoning effort level"
+        if openai_reasoning_effort is None:
+            console.print(
+                create_question_box(
+                    "Step 8: Reasoning Effort",
+                    "Configure OpenAI reasoning effort level"
+                )
             )
-        )
-        reasoning_effort = ask_openai_reasoning_effort()
+            openai_reasoning_effort = ask_openai_reasoning_effort()
     elif provider_lower == "anthropic":
-        console.print(
-            create_question_box(
-                "Step 8: Effort Level",
-                "Configure Claude effort level"
+        if anthropic_effort is None:
+            console.print(
+                create_question_box(
+                    "Step 8: Effort Level",
+                    "Configure Claude effort level"
+                )
             )
-        )
-        anthropic_effort = ask_anthropic_effort()
+            anthropic_effort = ask_anthropic_effort()
 
     return {
-        "ticker": selected_ticker,
+        "ticker": ticker,
         "asset_type": asset_type.value,
         "analysis_date": analysis_date,
-        "analysts": selected_analysts,
-        "research_depth": selected_research_depth,
-        "llm_provider": selected_llm_provider.lower(),
+        "analysts": analysts,
+        "research_depth": research_depth,
+        "llm_provider": llm_provider.lower(),
         "backend_url": backend_url,
-        "shallow_thinker": selected_shallow_thinker,
-        "deep_thinker": selected_deep_thinker,
-        "google_thinking_level": thinking_level,
-        "openai_reasoning_effort": reasoning_effort,
+        "shallow_thinker": shallow_thinker,
+        "deep_thinker": deep_thinker,
+        "google_thinking_level": google_thinking_level,
+        "openai_reasoning_effort": openai_reasoning_effort,
         "anthropic_effort": anthropic_effort,
         "output_language": output_language,
     }
+
 
 
 def get_ticker():
@@ -974,9 +1023,48 @@ def format_tool_args(args, max_length=80) -> str:
         return result[:max_length - 3] + "..."
     return result
 
-def run_analysis(checkpoint: bool = False):
+def run_analysis(
+    checkpoint: bool = False,
+    ticker: Optional[str] = None,
+    analysis_date: Optional[str] = None,
+    analysts: Optional[List[AnalystType]] = None,
+    research_depth: Optional[int] = None,
+    llm_provider: Optional[str] = None,
+    backend_url: Optional[str] = None,
+    shallow_thinker: Optional[str] = None,
+    deep_thinker: Optional[str] = None,
+    google_thinking_level: Optional[str] = None,
+    openai_reasoning_effort: Optional[str] = None,
+    anthropic_effort: Optional[str] = None,
+    output_language: Optional[str] = None,
+):
     # First get all user selections
-    selections = get_user_selections()
+    selections = get_user_selections(
+        ticker=ticker,
+        analysis_date=analysis_date,
+        analysts=analysts,
+        research_depth=research_depth,
+        llm_provider=llm_provider,
+        backend_url=backend_url,
+        shallow_thinker=shallow_thinker,
+        deep_thinker=deep_thinker,
+        google_thinking_level=google_thinking_level,
+        openai_reasoning_effort=openai_reasoning_effort,
+        anthropic_effort=anthropic_effort,
+        output_language=output_language,
+    )
+
+    # Initialize structured logger with run context
+    slog = get_logger("tradingagents.cli")
+    slog.info(
+        "Analysis started",
+        ticker=selections["ticker"],
+        date=selections["analysis_date"],
+        provider=selections["llm_provider"],
+        depth=str(selections["research_depth"]),
+        analysts=",".join(a.value for a in selections["analysts"]),
+        language=selections.get("output_language", "English"),
+    )
 
     # Create config with selected research depth
     config = DEFAULT_CONFIG.copy()
@@ -1015,6 +1103,13 @@ def run_analysis(checkpoint: bool = False):
 
     # Initialize message buffer with selected analysts
     message_buffer.init_for_analysis(selected_analyst_keys)
+    slog.debug(
+        "Graph initialized",
+        agents=",".join(selected_analyst_keys),
+        depth=str(research_depth),
+        shallow_model=selections["shallow_thinker"],
+        deep_model=selections["deep_thinker"],
+    )
 
     # Track start time for elapsed display
     start_time = time.time()
@@ -1110,131 +1205,151 @@ def run_analysis(checkpoint: bool = False):
 
         # Stream the analysis
         trace = []
-        for chunk in graph.graph.stream(init_agent_state, **args):
-            # Process all messages in chunk, deduplicating by message ID
-            for message in chunk.get("messages", []):
-                msg_id = getattr(message, "id", None)
-                if msg_id is not None:
-                    if msg_id in message_buffer._processed_message_ids:
-                        continue
-                    message_buffer._processed_message_ids.add(msg_id)
+        try:
+            for chunk in graph.graph.stream(init_agent_state, **args):
+                # Process all messages in chunk, deduplicating by message ID
+                for message in chunk.get("messages", []):
+                    msg_id = getattr(message, "id", None)
+                    if msg_id is not None:
+                        if msg_id in message_buffer._processed_message_ids:
+                            continue
+                        message_buffer._processed_message_ids.add(msg_id)
 
-                msg_type, content = classify_message_type(message)
-                if content and content.strip():
-                    message_buffer.add_message(msg_type, content)
+                    msg_type, content = classify_message_type(message)
+                    if content and content.strip():
+                        message_buffer.add_message(msg_type, content)
 
-                if hasattr(message, "tool_calls") and message.tool_calls:
-                    for tool_call in message.tool_calls:
-                        if isinstance(tool_call, dict):
-                            message_buffer.add_tool_call(tool_call["name"], tool_call["args"])
-                        else:
-                            message_buffer.add_tool_call(tool_call.name, tool_call.args)
+                    if hasattr(message, "tool_calls") and message.tool_calls:
+                        for tool_call in message.tool_calls:
+                            if isinstance(tool_call, dict):
+                                message_buffer.add_tool_call(tool_call["name"], tool_call["args"])
+                            else:
+                                message_buffer.add_tool_call(tool_call.name, tool_call.args)
 
-            # Update analyst statuses based on report state (runs on every chunk)
-            update_analyst_statuses(
+                # Update analyst statuses based on report state (runs on every chunk)
+                update_analyst_statuses(
                 message_buffer,
                 chunk,
                 wall_time_tracker=analyst_wall_time_tracker,
             )
 
-            # Research Team - Handle Investment Debate State
-            if chunk.get("investment_debate_state"):
-                debate_state = chunk["investment_debate_state"]
-                bull_hist = debate_state.get("bull_history", "").strip()
-                bear_hist = debate_state.get("bear_history", "").strip()
-                judge = debate_state.get("judge_decision", "").strip()
+                # Research Team - Handle Investment Debate State
+                if chunk.get("investment_debate_state"):
+                    debate_state = chunk["investment_debate_state"]
+                    bull_hist = debate_state.get("bull_history", "").strip()
+                    bear_hist = debate_state.get("bear_history", "").strip()
+                    judge = debate_state.get("judge_decision", "").strip()
 
-                # Only update status when there's actual content
-                if bull_hist or bear_hist:
-                    update_research_team_status("in_progress")
-                if bull_hist:
-                    message_buffer.update_report_section(
-                        "investment_plan", f"### Bull Researcher Analysis\n{bull_hist}"
-                    )
-                if bear_hist:
-                    message_buffer.update_report_section(
-                        "investment_plan", f"### Bear Researcher Analysis\n{bear_hist}"
-                    )
-                if judge:
-                    message_buffer.update_report_section(
-                        "investment_plan", f"### Research Manager Decision\n{judge}"
-                    )
-                    update_research_team_status("completed")
-                    message_buffer.update_agent_status("Trader", "in_progress")
-
-            # Trading Team
-            if chunk.get("trader_investment_plan"):
-                message_buffer.update_report_section(
-                    "trader_investment_plan", chunk["trader_investment_plan"]
-                )
-                if message_buffer.agent_status.get("Trader") != "completed":
-                    message_buffer.update_agent_status("Trader", "completed")
-                    message_buffer.update_agent_status("Aggressive Analyst", "in_progress")
-
-            # Risk Management Team - Handle Risk Debate State
-            if chunk.get("risk_debate_state"):
-                risk_state = chunk["risk_debate_state"]
-                agg_hist = risk_state.get("aggressive_history", "").strip()
-                con_hist = risk_state.get("conservative_history", "").strip()
-                neu_hist = risk_state.get("neutral_history", "").strip()
-                judge = risk_state.get("judge_decision", "").strip()
-
-                if agg_hist:
-                    if message_buffer.agent_status.get("Aggressive Analyst") != "completed":
-                        message_buffer.update_agent_status("Aggressive Analyst", "in_progress")
-                    message_buffer.update_report_section(
-                        "final_trade_decision", f"### Aggressive Analyst Analysis\n{agg_hist}"
-                    )
-                if con_hist:
-                    if message_buffer.agent_status.get("Conservative Analyst") != "completed":
-                        message_buffer.update_agent_status("Conservative Analyst", "in_progress")
-                    message_buffer.update_report_section(
-                        "final_trade_decision", f"### Conservative Analyst Analysis\n{con_hist}"
-                    )
-                if neu_hist:
-                    if message_buffer.agent_status.get("Neutral Analyst") != "completed":
-                        message_buffer.update_agent_status("Neutral Analyst", "in_progress")
-                    message_buffer.update_report_section(
-                        "final_trade_decision", f"### Neutral Analyst Analysis\n{neu_hist}"
-                    )
-                if judge:
-                    if message_buffer.agent_status.get("Portfolio Manager") != "completed":
-                        message_buffer.update_agent_status("Portfolio Manager", "in_progress")
+                    # Only update status when there's actual content
+                    if bull_hist or bear_hist:
+                        update_research_team_status("in_progress")
+                    if bull_hist:
                         message_buffer.update_report_section(
-                            "final_trade_decision", f"### Portfolio Manager Decision\n{judge}"
+                            "investment_plan", f"### Bull Researcher Analysis\n{bull_hist}"
                         )
-                        message_buffer.update_agent_status("Aggressive Analyst", "completed")
-                        message_buffer.update_agent_status("Conservative Analyst", "completed")
-                        message_buffer.update_agent_status("Neutral Analyst", "completed")
-                        message_buffer.update_agent_status("Portfolio Manager", "completed")
+                    if bear_hist:
+                        message_buffer.update_report_section(
+                            "investment_plan", f"### Bear Researcher Analysis\n{bear_hist}"
+                        )
+                    if judge:
+                        message_buffer.update_report_section(
+                            "investment_plan", f"### Research Manager Decision\n{judge}"
+                        )
+                        update_research_team_status("completed")
+                        message_buffer.update_agent_status("Trader", "in_progress")
 
-            # Update the display
+                # Trading Team
+                if chunk.get("trader_investment_plan"):
+                    message_buffer.update_report_section(
+                        "trader_investment_plan", chunk["trader_investment_plan"]
+                    )
+                    if message_buffer.agent_status.get("Trader") != "completed":
+                        message_buffer.update_agent_status("Trader", "completed")
+                        message_buffer.update_agent_status("Aggressive Analyst", "in_progress")
+
+                # Risk Management Team - Handle Risk Debate State
+                if chunk.get("risk_debate_state"):
+                    risk_state = chunk["risk_debate_state"]
+                    agg_hist = risk_state.get("aggressive_history", "").strip()
+                    con_hist = risk_state.get("conservative_history", "").strip()
+                    neu_hist = risk_state.get("neutral_history", "").strip()
+                    judge = risk_state.get("judge_decision", "").strip()
+
+                    if agg_hist:
+                        if message_buffer.agent_status.get("Aggressive Analyst") != "completed":
+                            message_buffer.update_agent_status("Aggressive Analyst", "in_progress")
+                        message_buffer.update_report_section(
+                            "final_trade_decision", f"### Aggressive Analyst Analysis\n{agg_hist}"
+                        )
+                    if con_hist:
+                        if message_buffer.agent_status.get("Conservative Analyst") != "completed":
+                            message_buffer.update_agent_status("Conservative Analyst", "in_progress")
+                        message_buffer.update_report_section(
+                            "final_trade_decision", f"### Conservative Analyst Analysis\n{con_hist}"
+                        )
+                    if neu_hist:
+                        if message_buffer.agent_status.get("Neutral Analyst") != "completed":
+                            message_buffer.update_agent_status("Neutral Analyst", "in_progress")
+                        message_buffer.update_report_section(
+                            "final_trade_decision", f"### Neutral Analyst Analysis\n{neu_hist}"
+                        )
+                    if judge:
+                        if message_buffer.agent_status.get("Portfolio Manager") != "completed":
+                            message_buffer.update_agent_status("Portfolio Manager", "in_progress")
+                            message_buffer.update_report_section(
+                                "final_trade_decision", f"### Portfolio Manager Decision\n{judge}"
+                            )
+                            message_buffer.update_agent_status("Aggressive Analyst", "completed")
+                            message_buffer.update_agent_status("Conservative Analyst", "completed")
+                            message_buffer.update_agent_status("Neutral Analyst", "completed")
+                            message_buffer.update_agent_status("Portfolio Manager", "completed")
+
+                # Update the display
+                update_display(layout, stats_handler=stats_handler, start_time=start_time)
+
+                trace.append(chunk)
+
+            # Streamed chunks are per-node deltas, not full state. Merge them
+            # so every report field populated across the run is present.
+            final_state = {}
+            for chunk in trace:
+                final_state.update(chunk)
+            decision = graph.process_signal(final_state["final_trade_decision"])
+
+            # Update all agent statuses to completed
+            for agent in message_buffer.agent_status:
+                message_buffer.update_agent_status(agent, "completed")
+
+            message_buffer.add_message(
+                "System", f"Completed analysis for {selections['analysis_date']}"
+            )
+
+            # Update final report sections
+            for section in message_buffer.report_sections.keys():
+                if section in final_state:
+                    message_buffer.update_report_section(section, final_state[section])
+
             update_display(layout, stats_handler=stats_handler, start_time=start_time)
 
-            trace.append(chunk)
+            stats = stats_handler.get_stats()
+            elapsed = time.time() - start_time
+            slog.info(
+                "Analysis completed successfully",
+                decision=decision[:100] if decision else "",
+                llm_calls=str(stats["llm_calls"]),
+                tool_calls=str(stats["tool_calls"]),
+                tokens_in=str(stats["tokens_in"]),
+                tokens_out=str(stats["tokens_out"]),
+                elapsed_sec=f"{elapsed:.1f}",
+            )
 
-        # Streamed chunks are per-node deltas, not full state. Merge them
-        # so every report field populated across the run is present.
-        final_state = {}
-        for chunk in trace:
-            final_state.update(chunk)
-        decision = graph.process_signal(final_state["final_trade_decision"])
-
-        # Update all agent statuses to completed
-        for agent in message_buffer.agent_status:
-            message_buffer.update_agent_status(agent, "completed")
-
-        message_buffer.add_message(
-            "System", f"Completed analysis for {selections['analysis_date']}"
-        )
-        message_buffer.add_message("System", analyst_wall_time_tracker.format_summary())
-
-        # Update final report sections
-        for section in message_buffer.report_sections.keys():
-            if section in final_state:
-                message_buffer.update_report_section(section, final_state[section])
-
-        update_display(layout, stats_handler=stats_handler, start_time=start_time)
+        except Exception as exc:
+            slog.error(
+                "Analysis failed",
+                exception=str(exc),
+                elapsed_sec=f"{time.time() - start_time:.1f}",
+            )
+            raise
 
     # Post-analysis prompts (outside Live context for clean interaction)
     console.print("\n[bold cyan]Analysis Complete![/bold cyan]\n")
@@ -1254,17 +1369,33 @@ def run_analysis(checkpoint: bool = False):
             report_file = save_report_to_disk(final_state, selections["ticker"], save_path)
             console.print(f"\n[green]✓ Report saved to:[/green] {save_path.resolve()}")
             console.print(f"  [dim]Complete report:[/dim] {report_file.name}")
+            slog.info("Report saved", path=str(save_path.resolve()))
         except Exception as e:
             console.print(f"[red]Error saving report: {e}[/red]")
+            slog.error("Failed to save report", exception=str(e))
 
     # Prompt to display full report
     display_choice = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper()
     if display_choice in ("Y", "YES", ""):
         display_complete_report(final_state)
 
+    slog.close()
+
 
 @app.command()
 def analyze(
+    ticker: Optional[str] = typer.Option(None, "--ticker", "-t", help="Ticker symbol to analyze"),
+    date: Optional[str] = typer.Option(None, "--date", "-d", help="Analysis date (YYYY-MM-DD)"),
+    analysts: Optional[List[AnalystType]] = typer.Option(None, "--analyst", "-a", help="Analysts to include (can be specified multiple times)"),
+    depth: Optional[int] = typer.Option(None, "--depth", help="Research depth level (number of debate rounds)"),
+    provider: Optional[str] = typer.Option(None, "--provider", help="LLM provider (openai, google, anthropic, openrouter)"),
+    backend_url: Optional[str] = typer.Option(None, "--backend-url", help="Custom backend URL for LLM provider"),
+    shallow_thinker: Optional[str] = typer.Option(None, "--shallow-thinker", help="LLM model for shallow thinking tasks"),
+    deep_thinker: Optional[str] = typer.Option(None, "--deep-thinker", help="LLM model for deep thinking tasks"),
+    language: Optional[str] = typer.Option(None, "--language", "-l", help="Output language for reports"),
+    google_thinking_level: Optional[str] = typer.Option(None, "--google-thinking-level", help="Gemini thinking level"),
+    openai_reasoning_effort: Optional[str] = typer.Option(None, "--openai-reasoning-effort", help="OpenAI reasoning effort"),
+    anthropic_effort: Optional[str] = typer.Option(None, "--anthropic-effort", help="Anthropic effort level"),
     checkpoint: bool = typer.Option(
         False,
         "--checkpoint",
@@ -1280,7 +1411,22 @@ def analyze(
         from tradingagents.graph.checkpointer import clear_all_checkpoints
         n = clear_all_checkpoints(DEFAULT_CONFIG["data_cache_dir"])
         console.print(f"[yellow]Cleared {n} checkpoint(s).[/yellow]")
-    run_analysis(checkpoint=checkpoint)
+    
+    run_analysis(
+        checkpoint=checkpoint,
+        ticker=ticker,
+        analysis_date=date,
+        analysts=analysts,
+        research_depth=depth,
+        llm_provider=provider,
+        backend_url=backend_url,
+        shallow_thinker=shallow_thinker,
+        deep_thinker=deep_thinker,
+        google_thinking_level=google_thinking_level,
+        openai_reasoning_effort=openai_reasoning_effort,
+        anthropic_effort=anthropic_effort,
+        output_language=language,
+    )
 
 
 if __name__ == "__main__":
