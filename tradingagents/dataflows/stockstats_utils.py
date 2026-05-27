@@ -43,6 +43,8 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
 
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps."""
+    if data.empty or "Date" not in data.columns:
+        return data
     data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
     data = data.dropna(subset=["Date"])
 
@@ -100,7 +102,8 @@ def load_ohlcv(symbol: str, curr_date: str) -> pd.DataFrame:
     data = _clean_dataframe(data)
 
     # Filter to curr_date to prevent look-ahead bias in backtesting
-    data = data[data["Date"] <= curr_date_dt]
+    if not data.empty and "Date" in data.columns:
+        data = data[data["Date"] <= curr_date_dt]
 
     return data
 
@@ -131,6 +134,8 @@ class StockstatsUtils:
         ],
     ):
         data = load_ohlcv(symbol, curr_date)
+        if data.empty or "Date" not in data.columns:
+            return "N/A: No data available"
         df = wrap(data)
         df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
         curr_date_str = pd.to_datetime(curr_date).strftime("%Y-%m-%d")

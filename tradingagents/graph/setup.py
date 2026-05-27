@@ -159,7 +159,7 @@ class GraphSetup:
         self._slog.debug(
             "Graph setup complete",
             analysts=",".join(selected_analysts),
-            nodes=str(len(analyst_nodes) + 8),
+            nodes=str(len(plan.specs) * 3 + 8),
         )
 
         return workflow

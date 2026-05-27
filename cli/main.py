@@ -539,6 +539,8 @@ def get_user_selections(
         console.print(
             f"[green]Detected asset type:[/green] {asset_type.value}"
         )
+    else:
+        asset_type = detect_asset_type(ticker)
     # Step 2: Analysis date
     if analysis_date is None:
         default_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -551,26 +553,23 @@ def get_user_selections(
         )
         analysis_date = get_analysis_date()
 
-    # Step 3: Output language
-    if output_language is None:
-        console.print(
-            create_question_box(
-                "Step 3: Output Language",
-                "Select the language for analyst reports and final decision"
-            )
-        )
-        output_language = ask_output_language()
+    # Step 3: Output language — defaults to English, interactive prompt only
+    # for the full interactive flow (triggered by lack of --ticker).
+    output_language = output_language or "English"
 
     # Step 4: Select analysts
-    console.print(
-        create_question_box(
-            "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
+    if analysts is None:
+        console.print(
+            create_question_box(
+                "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
+            )
         )
-    )
-    selected_analysts = select_analysts(asset_type)
-    console.print(
-        f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
-    )
+        selected_analysts = select_analysts(asset_type)
+        console.print(
+            f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
+        )
+    else:
+        selected_analysts = analysts
 
     # Step 5: Research depth
     if research_depth is None:
@@ -610,22 +609,22 @@ def get_user_selections(
     # Providers with regional endpoints prompt for the region as a secondary
     # step so the main dropdown stays clean (mainland China and international
     # accounts cannot share API keys).
-    if selected_llm_provider == "qwen":
-        selected_llm_provider, backend_url = ask_qwen_region()
-    elif selected_llm_provider == "minimax":
-        selected_llm_provider, backend_url = ask_minimax_region()
-    elif selected_llm_provider == "glm":
-        selected_llm_provider, backend_url = ask_glm_region()
+    if llm_provider == "qwen":
+        llm_provider, backend_url = ask_qwen_region()
+    elif llm_provider == "minimax":
+        llm_provider, backend_url = ask_minimax_region()
+    elif llm_provider == "glm":
+        llm_provider, backend_url = ask_glm_region()
 
     # For Ollama, surface the resolved endpoint (OLLAMA_BASE_URL vs default)
     # before model selection so it's obvious where we're connecting.
-    if selected_llm_provider == "ollama":
+    if llm_provider == "ollama":
         confirm_ollama_endpoint(backend_url)
 
     # Confirm the provider's API key is present; prompt the user to paste
     # one and persist it to .env if it's missing, so the analysis run
     # doesn't fail later at the first API call.
-    ensure_api_key(selected_llm_provider)
+    ensure_api_key(llm_provider)
 
     # Step 7: Thinking agents
     if shallow_thinker is None:
@@ -674,7 +673,7 @@ def get_user_selections(
         "ticker": ticker,
         "asset_type": asset_type.value,
         "analysis_date": analysis_date,
-        "analysts": analysts,
+        "analysts": selected_analysts,
         "research_depth": research_depth,
         "llm_provider": llm_provider.lower(),
         "backend_url": backend_url,
@@ -1064,6 +1063,14 @@ def run_analysis(
         depth=str(selections["research_depth"]),
         analysts=",".join(a.value for a in selections["analysts"]),
         language=selections.get("output_language", "English"),
+    )
+
+    console.print(
+        f"\n[bold green]Starting analysis[/bold green] — "
+        f"[cyan]{selections['ticker']}[/cyan] on "
+        f"[cyan]{selections['analysis_date']}[/cyan] "
+        f"with [cyan]{selections['llm_provider']}[/cyan] "
+        f"({', '.join(a.value for a in selections['analysts'])})\n"
     )
 
     # Create config with selected research depth
