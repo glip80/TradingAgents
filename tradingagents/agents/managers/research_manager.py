@@ -2,15 +2,33 @@
 
 from __future__ import annotations
 
+import re
+
 from tradingagents.agents.schemas import ResearchPlan, render_research_plan
 from tradingagents.agents.utils.agent_utils import (
     build_instrument_context,
     get_language_instruction,
 )
+from tradingagents.agents.utils.report_summarizer import summarize_reports
 from tradingagents.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+
+
+def _compress_debate_history(history: str) -> str:
+    """Extract key arguments from each debate round, keeping first 1-2 sentences per speaker."""
+    if not history or len(history) < 500:
+        return history
+    parts = re.split(r"(Bull Analyst:|Bear Analyst:)", history)
+    compressed = []
+    for i in range(0, len(parts) - 1, 2):
+        speaker = parts[i]
+        speech = parts[i + 1]
+        sentences = re.split(r"(?<=[.!?])\s+", speech.strip())
+        key_points = sentences[:2]
+        compressed.append(f"{speaker} {' '.join(key_points)}")
+    return " ".join(compressed)
 
 
 def create_research_manager(llm):
@@ -19,6 +37,12 @@ def create_research_manager(llm):
     def research_manager_node(state) -> dict:
         instrument_context = build_instrument_context(state["company_of_interest"])
         history = state["investment_debate_state"].get("history", "")
+        compressed_history = _compress_debate_history(history)
+
+        market_research_report = state.get("market_summary") or summarize_reports(state)["market_summary"]
+        sentiment_report = state.get("sentiment_summary") or summarize_reports(state)["sentiment_summary"]
+        news_report = state.get("news_summary") or summarize_reports(state)["news_summary"]
+        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_report"]
 
         investment_debate_state = state["investment_debate_state"]
 
@@ -39,8 +63,22 @@ Commit to a clear stance whenever the debate's strongest arguments warrant one; 
 
 ---
 
-**Debate History:**
-{history}""" + get_language_instruction()
+**Market Research Report:**
+{market_research_report}
+
+**Social Media Sentiment Report:**
+{sentiment_report}
+
+**Latest World Affairs Report:**
+{news_report}
+
+**Company Fundamentals Report:**
+{fundamentals_report}
+
+---
+
+**Debate History (compressed):**
+{compressed_history}""" + get_language_instruction()
 
         investment_plan = invoke_structured_or_freetext(
             structured_llm,

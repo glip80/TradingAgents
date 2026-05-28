@@ -1,50 +1,60 @@
 {
-  "active_plan": "/Users/alex/PycharmProjects/TradingAgents/.sisyphus/plans/talib-integration.md",
-  "started_at": "2026-05-27T17:59:45.276Z",
+  "active_plan": "/Users/alex/PycharmProjects/TradingAgents/.sisyphus/plans/token-optimization.md",
+  "started_at": "2026-05-27T19:28:06.230Z",
   "session_ids": [
-    "ses_1956854b8ffeNFX14QHX6AQfv4"
+    "ses_1951771dbffeIUINLq7OX5w7xD"
   ],
-  "plan_name": "talib-integration",
+  "plan_name": "token-optimization",
   "agent": "atlas",
+  "worktree_path": null,
+  "session_origins": {
+    "ses_1951771dbffeIUINLq7OX5w7xD": "direct"
+  },
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "**Add TA-Lib dependency + adapt FeatureCalculator**",
-      "session_id": "ses_195643368ffePuvjxddrV6TceJ",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-27T18:08:45.937Z"
-    },
-    "todo:3": {
-      "task_key": "todo:3",
-      "task_label": "3",
-      "task_title": "**Replace get_indicators with TA-Lib FeatureCalculator**",
-      "session_id": "ses_19553ecd7ffehPsyQDvh0XDsbs",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-27T18:23:44.563Z"
-    },
-    "todo:4": {
-      "task_key": "todo:4",
-      "task_label": "4",
-      "task_title": "**Update market analyst prompt for richer indicator set**",
-      "session_id": "ses_1954efa50ffeXjpIoYz5SgDNQf",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-27T18:29:47.924Z"
-    },
-    "todo:5": {
-      "task_key": "todo:5",
-      "task_label": "5",
-      "task_title": "**Tests for FeatureCalculator + cache**",
-      "session_id": "ses_1954c075affeznbUbL3Ee9hQtI",
+      "task_title": "**Report summarizer module** (`tradingagents/agents/utils/report_summarizer.py`)",
+      "session_id": "ses_195159fd8ffeDBBFXP5863wxBP",
       "agent": "Sisyphus-Junior",
       "category": "deep",
-      "updated_at": "2026-05-27T18:48:49.224Z"
+      "updated_at": "2026-05-27T19:41:30.547Z"
+    },
+    "todo:2": {
+      "task_key": "todo:2",
+      "task_label": "2",
+      "task_title": "**Bull researcher → use summaries**",
+      "session_id": "ses_1950930b8ffesDmZ1IaLIMybMy",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-27T19:44:17.796Z"
+    },
+    "todo:8": {
+      "task_key": "todo:8",
+      "task_label": "8",
+      "task_title": "**Early-exit debate logic**",
+      "session_id": "ses_195016966ffe6ikuZkbEDcFb1Y",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-27T19:55:14.065Z"
+    },
+    "todo:10": {
+      "task_key": "todo:10",
+      "task_label": "10",
+      "task_title": "**Report summarizer tests**",
+      "session_id": "ses_194fd7b75ffe0kotviMHpi5zJe",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-27T19:59:24.558Z"
+    },
+    "final-wave:f1": {
+      "task_key": "final-wave:f1",
+      "task_label": "F1",
+      "task_title": "**Full Test Suite** — `unspecified-high`",
+      "session_id": "ses_192ee816dffe2fIgLzD9k76b4Q",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-28T05:34:10.710Z"
     }
-  },
-  "session_origins": {
-    "ses_1956854b8ffeNFX14QHX6AQfv4": "direct"
   }
 }

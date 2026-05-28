@@ -1,0 +1,8 @@
+=== Test 3: Empty Reports ===
+All 4 reports empty
+
+Result:
+market_summary: N/A: market report unavailable
+sentiment_summary: N/A: sentiment report unavailable
+news_summary: N/A: news report unavailable
+fundamentals_summary: N/A: fundamentals unavailable for crypto

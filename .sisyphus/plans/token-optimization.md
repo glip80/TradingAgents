@@ -134,7 +134,7 @@ Wave FINAL:
 
 ## TODOs
 
-- [ ] 1. **Report summarizer module** (`tradingagents/agents/utils/report_summarizer.py`)
+- [x] 1. **Report summarizer module** (`tradingagents/agents/utils/report_summarizer.py`)
 
   **What to do**:
   - Create new module with function `summarize_reports(state: dict) -> dict[str, str]`
@@ -211,7 +211,7 @@ Wave FINAL:
   - Message: `perf(agents): add deterministic report summarizer for debate input`
   - Files: `tradingagents/agents/utils/report_summarizer.py`
 
-- [ ] 2. **Bull researcher → use summaries**
+- [x] 2. **Bull researcher → use summaries**
 
   **What to do**:
   - In `tradingagents/agents/researchers/bull_researcher.py`:
@@ -250,7 +250,7 @@ Wave FINAL:
   - Message: `perf(bull): use report summaries instead of raw reports`
   - Files: `tradingagents/agents/researchers/bull_researcher.py`
 
-- [ ] 3. **Bear researcher → use summaries**
+- [x] 3. **Bear researcher → use summaries**
 
   **What to do**:
   - Same as Task 2 but for `tradingagents/agents/researchers/bear_researcher.py`
@@ -262,7 +262,7 @@ Wave FINAL:
   **QA Scenarios**: Same pattern as Task 2 — verify summary used.
   **Commit**: YES — `perf(bear): use report summaries instead of raw reports`
 
-- [ ] 4. **Aggressive debator → use summaries**
+- [x] 4. **Aggressive debator → use summaries**
 
   **What to do**:
   - Same pattern as Task 2 but for `tradingagents/agents/risk_mgmt/aggressive_debator.py`
@@ -273,7 +273,7 @@ Wave FINAL:
 
   **Commit**: YES — `perf(risk): use report summaries in aggressive debator`
 
-- [ ] 5. **Conservative debator → use summaries**
+- [x] 5. **Conservative debator → use summaries**
 
   **What to do**:
   - Same as Task 2 for `tradingagents/agents/risk_mgmt/conservative_debator.py`
@@ -284,7 +284,7 @@ Wave FINAL:
 
   **Commit**: YES — `perf(risk): use report summaries in conservative debator`
 
-- [ ] 6. **Neutral debator → use summaries**
+- [x] 6. **Neutral debator → use summaries**
 
   **What to do**:
   - Same as Task 2 for `tradingagents/agents/risk_mgmt/neutral_debator.py`
@@ -295,7 +295,7 @@ Wave FINAL:
 
   **Commit**: YES — `perf(risk): use report summaries in neutral debator`
 
-- [ ] 7. **Research manager → compressed history**
+- [x] 7. **Research manager → compressed history**
 
   **What to do**:
   - In `tradingagents/agents/managers/research_manager.py`:
@@ -335,7 +335,7 @@ Wave FINAL:
   - Message: `perf(manager): compress debate history for research manager`
   - Files: `tradingagents/agents/managers/research_manager.py`
 
-- [ ] 8. **Early-exit debate logic**
+- [x] 8. **Early-exit debate logic**
 
   **What to do**:
   - In `tradingagents/graph/conditional_logic.py`: add `_detect_consensus(state)` helper
@@ -397,7 +397,7 @@ Wave FINAL:
   - Message: `feat(debate): add consensus-based early exit to debate loop`
   - Files: `tradingagents/graph/conditional_logic.py`, `tradingagents/default_config.py`
 
-- [ ] 9. **Propagate summaries through graph state**
+- [x] 9. **Propagate summaries through graph state**
 
   **What to do**:
   - In `tradingagents/graph/setup.py` or the propogator: after all analysts complete, run `summarize_reports(state)`
@@ -436,7 +436,7 @@ Wave FINAL:
   - Message: `perf(state): propagate report summaries through graph state`
   - Files: `tradingagents/agents/utils/report_summarizer.py` (add lazy load), agent files (add fallback)
 
-- [ ] 10. **Report summarizer tests**
+- [x] 10. **Report summarizer tests**
 
   **What to do**:
   - Create `tests/test_report_summarizer.py`
@@ -465,18 +465,18 @@ Wave FINAL:
 
 ## Final Verification Wave (MANDATORY — after ALL implementation tasks)
 
-- [ ] F1. **Full Test Suite** — `unspecified-high`
+- [x] F1. **Full Test Suite** — `unspecified-high`
   Run `.venv/bin/python -m pytest tests/ -ra -q`. All 266+ existing tests + new summarizer tests must pass.
   Output: `Tests [N pass/N fail] | VERDICT: APPROVE/REJECT`
 
-- [ ] F2. **Token Count Verification** — `unspecified-high`
+- [x] F2. **Token Count Verification** — `unspecified-high`
   Run CLI with depth=3, risk-depth=1, capture LLM event logs. Verify:
   - Per-debate-call input < 2000 tokens (was ~4500)
   - Per-risk-call input < 2000 tokens (was ~5500)
   - Total run input < 55K tokens
   Output: `Debate [N tokens/call] | Risk [N tokens/call] | Total [N] | VERDICT`
 
-- [ ] F3. **Decision Quality Comparison** — `deep`
+- [x] F3. **Decision Quality Comparison** — `deep`
   Run analysis on same ticker/date with OLD (raw reports) and NEW (summaries). Compare:
   - Final recommendation direction (same? disagree?)
   - Portfolio Manager executive summary content overlap
@@ -507,11 +507,11 @@ Wave FINAL:
 ```
 
 ### Final Checklist
-- [ ] Report summarizer extracts direction + key facts + risks from all 4 report types
-- [ ] All 6 agent prompts (bull, bear, 3 debaters, research_manager) use summaries
-- [ ] Fallback to raw reports when summaries unavailable (backward compat)
-- [ ] Full reports still saved to state/logging
-- [ ] Token-per-call metrics verified below targets
-- [ ] Decision quality comparable between old and new runs
-- [ ] All 266+ tests pass
+- [x] Report summarizer extracts direction + key facts + risks from all 4 report types
+- [x] All 6 agent prompts (bull, bear, 3 debaters, research_manager) use summaries
+- [x] Fallback to raw reports when summaries unavailable (backward compat)
+- [x] Full reports still saved to state/logging
+- [x] Token-per-call metrics verified below targets
+- [x] Decision quality comparable between old and new runs
+- [x] All 266+ tests pass
 
