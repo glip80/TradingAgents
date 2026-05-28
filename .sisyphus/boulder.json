@@ -1,0 +1,50 @@
+{
+  "active_plan": "/Users/alex/PycharmProjects/TradingAgents/.sisyphus/plans/talib-integration.md",
+  "started_at": "2026-05-27T17:59:45.276Z",
+  "session_ids": [
+    "ses_1956854b8ffeNFX14QHX6AQfv4"
+  ],
+  "plan_name": "talib-integration",
+  "agent": "atlas",
+  "task_sessions": {
+    "todo:1": {
+      "task_key": "todo:1",
+      "task_label": "1",
+      "task_title": "**Add TA-Lib dependency + adapt FeatureCalculator**",
+      "session_id": "ses_195643368ffePuvjxddrV6TceJ",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-27T18:08:45.937Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "**Replace get_indicators with TA-Lib FeatureCalculator**",
+      "session_id": "ses_19553ecd7ffehPsyQDvh0XDsbs",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-27T18:23:44.563Z"
+    },
+    "todo:4": {
+      "task_key": "todo:4",
+      "task_label": "4",
+      "task_title": "**Update market analyst prompt for richer indicator set**",
+      "session_id": "ses_1954efa50ffeXjpIoYz5SgDNQf",
+      "agent": "Sisyphus-Junior",
+      "category": "quick",
+      "updated_at": "2026-05-27T18:29:47.924Z"
+    },
+    "todo:5": {
+      "task_key": "todo:5",
+      "task_label": "5",
+      "task_title": "**Tests for FeatureCalculator + cache**",
+      "session_id": "ses_1954c075affeznbUbL3Ee9hQtI",
+      "agent": "Sisyphus-Junior",
+      "category": "deep",
+      "updated_at": "2026-05-27T18:48:49.224Z"
+    }
+  },
+  "session_origins": {
+    "ses_1956854b8ffeNFX14QHX6AQfv4": "direct"
+  }
+}

@@ -181,7 +181,9 @@ You can also run the CLI with predefined parameters to skip interactive prompts.
 
 ```bash
 # Example: Run analysis for SPY with specific analysts and research depth
-tradingagents analyze --ticker SPY --date 2024-05-10 --analyst market --analyst news --depth 3 --provider openai --shallow-thinker gpt-4o-mini --deep-thinker gpt-4o
+tradingagents analyze --ticker SPY --date 2024-05-10 --analyst market --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
+
+tradingagents --ticker SOXL --date 2024-05-27 --analyst market --analyst social --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
 ```
 
 **Available Options:**

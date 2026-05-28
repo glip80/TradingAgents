@@ -4,7 +4,56 @@ from dateutil.relativedelta import relativedelta
 import pandas as pd
 import yfinance as yf
 import os
+import json
+import time
 from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
+
+
+def _cached_or_fetch(symbol, cache_key, fetcher, ttl_hours=24):
+    """Cache data to disk and return cached version if fresh enough."""
+    from .config import get_config
+    from .utils import safe_ticker_component
+
+    safe = safe_ticker_component(symbol)
+    config = get_config()
+    cache_ttl = config.get("fundamentals_cache_ttl_hours", ttl_hours)
+    cache_dir = config["data_cache_dir"]
+    cache_file = os.path.join(cache_dir, f"{safe}-{cache_key}.json")
+
+    if os.path.exists(cache_file):
+        file_age = time.time() - os.path.getmtime(cache_file)
+        if file_age < cache_ttl * 3600:
+            with open(cache_file) as f:
+                return json.load(f)
+
+    data = fetcher()
+
+    if data is not None and not (isinstance(data, (dict, list)) and len(data) == 0):
+        os.makedirs(cache_dir, exist_ok=True)
+        with open(cache_file, "w") as f:
+            json.dump(data, f, default=str)
+
+    return data
+
+
+def _financials_to_cacheable(df):
+    """Convert financial DataFrame to JSON-safe dict (handles Timestamp cols + NaN)."""
+    result = {}
+    for col in df.columns:
+        col_key = str(col)
+        result[col_key] = {}
+        for idx in df.index:
+            val = df.at[idx, col]
+            result[col_key][idx] = None if pd.isna(val) else val
+    return result
+
+
+def _financials_from_cacheable(d):
+    """Reconstruct DataFrame from JSON-safe dict."""
+    df = pd.DataFrame(d)
+    df.columns = pd.to_datetime(df.columns, errors="coerce")
+    return df
+
 
 def get_YFin_data_online(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -255,8 +304,11 @@ def get_fundamentals(
         Formatted string with fundamentals data or error message
     """
     try:
-        ticker_obj = yf.Ticker(ticker.upper())
-        info = yf_retry(lambda: ticker_obj.info)
+        info = _cached_or_fetch(
+            ticker,
+            "info",
+            lambda: yf_retry(lambda: yf.Ticker(ticker.upper()).info),
+        )
 
         if not info:
             return f"No fundamentals data found for symbol '{ticker}'"
@@ -320,13 +372,17 @@ def get_balance_sheet(
 ):
     """Get balance sheet data from yfinance."""
     try:
-        ticker_obj = yf.Ticker(ticker.upper())
+        def _fetch_bs():
+            t = yf.Ticker(ticker.upper())
+            if freq.lower() == "quarterly":
+                raw = yf_retry(lambda: t.quarterly_balance_sheet)
+            else:
+                raw = yf_retry(lambda: t.balance_sheet)
+            return _financials_to_cacheable(raw)
 
-        if freq.lower() == "quarterly":
-            data = yf_retry(lambda: ticker_obj.quarterly_balance_sheet)
-        else:
-            data = yf_retry(lambda: ticker_obj.balance_sheet)
-
+        cache_key = f"balance_sheet_{freq.lower()}"
+        cached = _cached_or_fetch(ticker, cache_key, _fetch_bs)
+        data = _financials_from_cacheable(cached) if isinstance(cached, dict) else cached
         data = filter_financials_by_date(data, curr_date)
 
         if data.empty:
@@ -352,13 +408,17 @@ def get_cashflow(
 ):
     """Get cash flow data from yfinance."""
     try:
-        ticker_obj = yf.Ticker(ticker.upper())
+        def _fetch_cf():
+            t = yf.Ticker(ticker.upper())
+            if freq.lower() == "quarterly":
+                raw = yf_retry(lambda: t.quarterly_cashflow)
+            else:
+                raw = yf_retry(lambda: t.cashflow)
+            return _financials_to_cacheable(raw)
 
-        if freq.lower() == "quarterly":
-            data = yf_retry(lambda: ticker_obj.quarterly_cashflow)
-        else:
-            data = yf_retry(lambda: ticker_obj.cashflow)
-
+        cache_key = f"cashflow_{freq.lower()}"
+        cached = _cached_or_fetch(ticker, cache_key, _fetch_cf)
+        data = _financials_from_cacheable(cached) if isinstance(cached, dict) else cached
         data = filter_financials_by_date(data, curr_date)
 
         if data.empty:
@@ -384,13 +444,17 @@ def get_income_statement(
 ):
     """Get income statement data from yfinance."""
     try:
-        ticker_obj = yf.Ticker(ticker.upper())
+        def _fetch_is():
+            t = yf.Ticker(ticker.upper())
+            if freq.lower() == "quarterly":
+                raw = yf_retry(lambda: t.quarterly_income_stmt)
+            else:
+                raw = yf_retry(lambda: t.income_stmt)
+            return _financials_to_cacheable(raw)
 
-        if freq.lower() == "quarterly":
-            data = yf_retry(lambda: ticker_obj.quarterly_income_stmt)
-        else:
-            data = yf_retry(lambda: ticker_obj.income_stmt)
-
+        cache_key = f"income_statement_{freq.lower()}"
+        cached = _cached_or_fetch(ticker, cache_key, _fetch_is)
+        data = _financials_from_cacheable(cached) if isinstance(cached, dict) else cached
         data = filter_financials_by_date(data, curr_date)
 
         if data.empty:

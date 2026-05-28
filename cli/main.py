@@ -476,6 +476,7 @@ def get_user_selections(
     openai_reasoning_effort: Optional[str] = None,
     anthropic_effort: Optional[str] = None,
     output_language: Optional[str] = None,
+    risk_depth: Optional[int] = None,
 ):
     """Get all user selections. Skips prompts if values are provided."""
     
@@ -539,6 +540,8 @@ def get_user_selections(
         console.print(
             f"[green]Detected asset type:[/green] {asset_type.value}"
         )
+    else:
+        asset_type = detect_asset_type(ticker)
     # Step 2: Analysis date
     if analysis_date is None:
         default_date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -551,26 +554,23 @@ def get_user_selections(
         )
         analysis_date = get_analysis_date()
 
-    # Step 3: Output language
-    if output_language is None:
-        console.print(
-            create_question_box(
-                "Step 3: Output Language",
-                "Select the language for analyst reports and final decision"
-            )
-        )
-        output_language = ask_output_language()
+    # Step 3: Output language — defaults to English, interactive prompt only
+    # for the full interactive flow (triggered by lack of --ticker).
+    output_language = output_language or "English"
 
     # Step 4: Select analysts
-    console.print(
-        create_question_box(
-            "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
+    if analysts is None:
+        console.print(
+            create_question_box(
+                "Step 4: Analysts Team", "Select your LLM analyst agents for the analysis"
+            )
         )
-    )
-    selected_analysts = select_analysts(asset_type)
-    console.print(
-        f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
-    )
+        selected_analysts = select_analysts(asset_type)
+        console.print(
+            f"[green]Selected analysts:[/green] {', '.join(analyst.value for analyst in selected_analysts)}"
+        )
+    else:
+        selected_analysts = analysts
 
     # Step 5: Research depth
     if research_depth is None:
@@ -610,22 +610,22 @@ def get_user_selections(
     # Providers with regional endpoints prompt for the region as a secondary
     # step so the main dropdown stays clean (mainland China and international
     # accounts cannot share API keys).
-    if selected_llm_provider == "qwen":
-        selected_llm_provider, backend_url = ask_qwen_region()
-    elif selected_llm_provider == "minimax":
-        selected_llm_provider, backend_url = ask_minimax_region()
-    elif selected_llm_provider == "glm":
-        selected_llm_provider, backend_url = ask_glm_region()
+    if llm_provider == "qwen":
+        llm_provider, backend_url = ask_qwen_region()
+    elif llm_provider == "minimax":
+        llm_provider, backend_url = ask_minimax_region()
+    elif llm_provider == "glm":
+        llm_provider, backend_url = ask_glm_region()
 
     # For Ollama, surface the resolved endpoint (OLLAMA_BASE_URL vs default)
     # before model selection so it's obvious where we're connecting.
-    if selected_llm_provider == "ollama":
+    if llm_provider == "ollama":
         confirm_ollama_endpoint(backend_url)
 
     # Confirm the provider's API key is present; prompt the user to paste
     # one and persist it to .env if it's missing, so the analysis run
     # doesn't fail later at the first API call.
-    ensure_api_key(selected_llm_provider)
+    ensure_api_key(llm_provider)
 
     # Step 7: Thinking agents
     if shallow_thinker is None:
@@ -674,7 +674,7 @@ def get_user_selections(
         "ticker": ticker,
         "asset_type": asset_type.value,
         "analysis_date": analysis_date,
-        "analysts": analysts,
+        "analysts": selected_analysts,
         "research_depth": research_depth,
         "llm_provider": llm_provider.lower(),
         "backend_url": backend_url,
@@ -684,6 +684,7 @@ def get_user_selections(
         "openai_reasoning_effort": openai_reasoning_effort,
         "anthropic_effort": anthropic_effort,
         "output_language": output_language,
+        "risk_depth": risk_depth,
     }
 
 
@@ -1037,6 +1038,7 @@ def run_analysis(
     openai_reasoning_effort: Optional[str] = None,
     anthropic_effort: Optional[str] = None,
     output_language: Optional[str] = None,
+    risk_depth: Optional[int] = None,
 ):
     # First get all user selections
     selections = get_user_selections(
@@ -1052,6 +1054,7 @@ def run_analysis(
         openai_reasoning_effort=openai_reasoning_effort,
         anthropic_effort=anthropic_effort,
         output_language=output_language,
+        risk_depth=risk_depth,
     )
 
     # Initialize structured logger with run context
@@ -1066,10 +1069,20 @@ def run_analysis(
         language=selections.get("output_language", "English"),
     )
 
+    console.print(
+        f"\n[bold green]Starting analysis[/bold green] — "
+        f"[cyan]{selections['ticker']}[/cyan] on "
+        f"[cyan]{selections['analysis_date']}[/cyan] "
+        f"with [cyan]{selections['llm_provider']}[/cyan] "
+        f"({', '.join(a.value for a in selections['analysts'])})\n"
+    )
+
     # Create config with selected research depth
     config = DEFAULT_CONFIG.copy()
+    if analyst_concurrency_limit is not None:
+        config["analyst_concurrency_limit"] = analyst_concurrency_limit
     config["max_debate_rounds"] = selections["research_depth"]
-    config["max_risk_discuss_rounds"] = selections["research_depth"]
+    config["max_risk_discuss_rounds"] = selections.get("risk_depth", 1)
     config["quick_think_llm"] = selections["shallow_thinker"]
     config["deep_think_llm"] = selections["deep_thinker"]
     config["backend_url"] = selections["backend_url"]
@@ -1388,6 +1401,7 @@ def analyze(
     date: Optional[str] = typer.Option(None, "--date", "-d", help="Analysis date (YYYY-MM-DD)"),
     analysts: Optional[List[AnalystType]] = typer.Option(None, "--analyst", "-a", help="Analysts to include (can be specified multiple times)"),
     depth: Optional[int] = typer.Option(None, "--depth", help="Research depth level (number of debate rounds)"),
+    risk_depth: Optional[int] = typer.Option(1, "--risk-depth", help="Risk debate rounds (default: 1)"),
     provider: Optional[str] = typer.Option(None, "--provider", help="LLM provider (openai, google, anthropic, openrouter)"),
     backend_url: Optional[str] = typer.Option(None, "--backend-url", help="Custom backend URL for LLM provider"),
     shallow_thinker: Optional[str] = typer.Option(None, "--shallow-thinker", help="LLM model for shallow thinking tasks"),
@@ -1396,6 +1410,7 @@ def analyze(
     google_thinking_level: Optional[str] = typer.Option(None, "--google-thinking-level", help="Gemini thinking level"),
     openai_reasoning_effort: Optional[str] = typer.Option(None, "--openai-reasoning-effort", help="OpenAI reasoning effort"),
     anthropic_effort: Optional[str] = typer.Option(None, "--anthropic-effort", help="Anthropic effort level"),
+    concurrency: Optional[int] = typer.Option(None, "--concurrency", help="Analyst concurrency limit (1-4, default: 4)"),
     checkpoint: bool = typer.Option(
         False,
         "--checkpoint",
@@ -1426,6 +1441,8 @@ def analyze(
         openai_reasoning_effort=openai_reasoning_effort,
         anthropic_effort=anthropic_effort,
         output_language=language,
+        risk_depth=risk_depth,
+        analyst_concurrency_limit=concurrency,
     )
 
 

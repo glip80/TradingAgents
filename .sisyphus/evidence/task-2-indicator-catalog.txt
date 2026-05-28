@@ -1,0 +1,31 @@
+Task 2: Compress indicator catalog — QA evidence
+=================================================
+
+File: tradingagents/agents/analysts/market_analyst.py
+
+All 12 indicators confirmed present after compression:
+  1. close_50_sma  — line 29
+  2. close_200_sma — line 30
+  3. close_10_ema  — line 31
+  4. macd          — line 34
+  5. macds         — line 35
+  6. macdh         — line 36
+  7. rsi           — line 39
+  8. boll          — line 42
+  9. boll_ub       — line 43
+ 10. boll_lb       — line 44
+ 11. atr           — line 45
+ 12. vwma          — line 48
+
+Category headers preserved: Moving Averages, MACD Related, Momentum Indicators,
+Volatility Indicators, Volume-Based Indicators.
+
+Post-catalog prose paragraph preserved (line 50): "Select indicators that provide
+diverse and complementary information..."
+
+Tool-calling instructions preserved (lines 51-52).
+
+LSP diagnostics: clean (only pre-existing unused import warning on line 8).
+
+Compile check: attempted, failed due to missing langchain_core dependency (env
+issue, unrelated to change). Syntax is valid — no Python syntax errors.
