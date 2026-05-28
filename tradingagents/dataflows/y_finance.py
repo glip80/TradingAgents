@@ -247,7 +247,13 @@ def _get_stock_stats_bulk(
     from stockstats import wrap
 
     data = load_ohlcv(symbol, curr_date)
+    # stockstats.wrap() requires date-indexed DataFrames and parses every
+    # column name. Having 'Date' as a column triggers "Invalid number of
+    # return arguments" errors. Set it as the index before wrapping.
+    if "Date" in data.columns:
+        data = data.set_index("Date")
     df = wrap(data)
+    df = df.reset_index()
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
     
     # Calculate the indicator for all rows at once

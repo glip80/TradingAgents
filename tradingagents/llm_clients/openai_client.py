@@ -203,11 +203,21 @@ class OpenAIClient(BaseLLMClient):
         self.warn_if_unknown_model()
         llm_kwargs = {"model": self.model}
 
-        # Provider-specific base URL and auth. An explicit base_url on the
-        # client (e.g. a corporate proxy) takes precedence over the
-        # provider default so users can route through their own gateway.
-        if self.provider in _PROVIDER_BASE_URL:
+        # Provider-specific base URL and auth.
+        # Custom environment variable overrides take absolute precedence.
+        custom_base_url = os.environ.get("CUSTOM_OPENAI_URL")
+        custom_api_key = os.environ.get("CUSTOM_OPEN_AI_KEY")
+
+        if custom_base_url:
+            llm_kwargs["base_url"] = custom_base_url
+        elif self.provider in _PROVIDER_BASE_URL:
             llm_kwargs["base_url"] = self.base_url or _resolve_provider_base_url(self.provider)
+        elif self.base_url:
+            llm_kwargs["base_url"] = self.base_url
+
+        if custom_api_key:
+            llm_kwargs["api_key"] = custom_api_key
+        elif self.provider in _PROVIDER_BASE_URL:
             api_key_env = get_api_key_env(self.provider)
             if api_key_env:
                 api_key = os.environ.get(api_key_env)
@@ -221,8 +231,6 @@ class OpenAIClient(BaseLLMClient):
                     )
             else:
                 llm_kwargs["api_key"] = "ollama"
-        elif self.base_url:
-            llm_kwargs["base_url"] = self.base_url
 
         # Forward user-provided kwargs
         for key in _PASSTHROUGH_KWARGS:

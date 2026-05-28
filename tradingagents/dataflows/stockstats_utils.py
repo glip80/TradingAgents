@@ -136,7 +136,8 @@ class StockstatsUtils:
         data = load_ohlcv(symbol, curr_date)
         if data.empty or "Date" not in data.columns:
             return "N/A: No data available"
-        df = wrap(data)
+        # stockstats.wrap() chokes on 'Date' as a column — set as index first
+        df = wrap(data.set_index("Date")).reset_index()
         df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
         curr_date_str = pd.to_datetime(curr_date).strftime("%Y-%m-%d")
 

@@ -151,6 +151,18 @@ export MINIMAX_API_KEY=...         # MiniMax — Global (api.minimax.io, M2.x, 2
 export MINIMAX_CN_API_KEY=...      # MiniMax — China (api.minimaxi.com, M2.x, 204K ctx)
 export OPENROUTER_API_KEY=...      # OpenRouter
 export ALPHA_VANTAGE_API_KEY=...   # Alpha Vantage
+export CUSTOM_OPENAI_URL=...      # Custom OpenAI-compatible endpoint (any provider)
+export CUSTOM_OPEN_AI_KEY=...     # API key for custom endpoint (optional: falls back to provider key)
+```
+
+These env vars override the base URL and API key for any OpenAI-compatible provider. Use them to route through proxies, self-hosted gateways, or custom endpoints with standard chat completions API. When `CUSTOM_OPEN_AI_KEY` is unset it falls back to the provider's own key.
+
+```bash
+# Example: route xAI through a local gateway
+export CUSTOM_OPENAI_URL=http://localhost:8080/v1
+export CUSTOM_OPEN_AI_KEY=sk-local-gateway
+# regular provider config still applies (model, capabilities, etc.)
+llm_provider: xai   # still treated as xAI for model routing
 ```
 
 For enterprise providers (e.g. Azure OpenAI, AWS Bedrock), copy `.env.enterprise.example` to `.env.enterprise` and fill in your credentials.
@@ -181,9 +193,9 @@ You can also run the CLI with predefined parameters to skip interactive prompts.
 
 ```bash
 # Example: Run analysis for SPY with specific analysts and research depth
-tradingagents analyze --ticker SPY --date 2024-05-10 --analyst market --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
+tradingagents analyze --ticker SPY --date 2026-05-28 --analyst market --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
 
-tradingagents --ticker SOXL --date 2024-05-27 --analyst market --analyst social --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
+tradingagents --ticker SOXL --date 2026-05-27 --analyst market --analyst social --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
 ```
 
 **Available Options:**

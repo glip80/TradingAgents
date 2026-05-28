@@ -1,60 +1,43 @@
 {
-  "active_plan": "/Users/alex/PycharmProjects/TradingAgents/.sisyphus/plans/token-optimization.md",
-  "started_at": "2026-05-27T19:28:06.230Z",
+  "active_plan": "/Users/alex/PycharmProjects/TradingAgents/.sisyphus/plans/openai-custom-endpoint.md",
+  "started_at": "2026-05-28T14:30:04.470Z",
   "session_ids": [
-    "ses_1951771dbffeIUINLq7OX5w7xD"
+    "ses_191086f68ffeYz1I36UrBReBGA",
+    "ses_190511386ffeWHQaotGEXxxFfA"
   ],
-  "plan_name": "token-optimization",
-  "agent": "atlas",
-  "worktree_path": null,
   "session_origins": {
-    "ses_1951771dbffeIUINLq7OX5w7xD": "direct"
+    "ses_191086f68ffeYz1I36UrBReBGA": "direct",
+    "ses_190511386ffeWHQaotGEXxxFfA": "direct"
   },
+  "plan_name": "openai-custom-endpoint",
+  "agent": "atlas",
   "task_sessions": {
     "todo:1": {
       "task_key": "todo:1",
       "task_label": "1",
-      "task_title": "**Report summarizer module** (`tradingagents/agents/utils/report_summarizer.py`)",
-      "session_id": "ses_195159fd8ffeDBBFXP5863wxBP",
+      "task_title": "Update api_key_env.py",
+      "session_id": "ses_19101d7c1ffe0KbvYQOMi7om8u",
       "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-05-27T19:41:30.547Z"
+      "category": "quick",
+      "updated_at": "2026-05-28T14:30:22.100Z"
     },
     "todo:2": {
       "task_key": "todo:2",
       "task_label": "2",
-      "task_title": "**Bull researcher → use summaries**",
-      "session_id": "ses_1950930b8ffesDmZ1IaLIMybMy",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-27T19:44:17.796Z"
-    },
-    "todo:8": {
-      "task_key": "todo:8",
-      "task_label": "8",
-      "task_title": "**Early-exit debate logic**",
-      "session_id": "ses_195016966ffe6ikuZkbEDcFb1Y",
-      "agent": "Sisyphus-Junior",
-      "category": "quick",
-      "updated_at": "2026-05-27T19:55:14.065Z"
-    },
-    "todo:10": {
-      "task_key": "todo:10",
-      "task_label": "10",
-      "task_title": "**Report summarizer tests**",
-      "session_id": "ses_194fd7b75ffe0kotviMHpi5zJe",
-      "agent": "Sisyphus-Junior",
-      "category": "deep",
-      "updated_at": "2026-05-27T19:59:24.558Z"
-    },
-    "final-wave:f1": {
-      "task_key": "final-wave:f1",
-      "task_label": "F1",
-      "task_title": "**Full Test Suite** — `unspecified-high`",
-      "session_id": "ses_192ee816dffe2fIgLzD9k76b4Q",
+      "task_title": "Update OpenAIClient.get_llm",
+      "session_id": "ses_190ffaa49ffe7K7A90h1VST9WP",
       "agent": "Sisyphus-Junior",
       "category": "unspecified-high",
-      "updated_at": "2026-05-28T05:34:10.710Z"
+      "updated_at": "2026-05-28T14:33:04.042Z"
+    },
+    "todo:3": {
+      "task_key": "todo:3",
+      "task_label": "3",
+      "task_title": "Create tests/test_openai_custom_endpoint.py",
+      "session_id": "ses_190ff00b9ffeOI3u7XVyOfqA0b",
+      "agent": "Sisyphus-Junior",
+      "category": "unspecified-high",
+      "updated_at": "2026-05-28T14:37:14.006Z"
     }
   }
 }
