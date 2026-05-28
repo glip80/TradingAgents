@@ -14,7 +14,7 @@ def create_neutral_debator(llm):
         market_research_report = state.get("market_summary") or summarize_reports(state)["market_summary"]
         sentiment_report = state.get("sentiment_summary") or summarize_reports(state)["sentiment_summary"]
         news_report = state.get("news_summary") or summarize_reports(state)["news_summary"]
-        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_report"]
+        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_summary"]
 
         trader_decision = state["trader_investment_plan"]
 

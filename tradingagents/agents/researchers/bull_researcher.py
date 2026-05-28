@@ -12,7 +12,7 @@ def create_bull_researcher(llm):
         market_research_report = state.get("market_summary") or summarize_reports(state)["market_summary"]
         sentiment_report = state.get("sentiment_summary") or summarize_reports(state)["sentiment_summary"]
         news_report = state.get("news_summary") or summarize_reports(state)["news_summary"]
-        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_report"]
+        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_summary"]
         asset_type = state.get("asset_type", "stock")
         target_label = "stock" if asset_type == "stock" else "asset"
         fundamentals_label = (

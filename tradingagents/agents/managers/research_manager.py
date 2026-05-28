@@ -42,7 +42,7 @@ def create_research_manager(llm):
         market_research_report = state.get("market_summary") or summarize_reports(state)["market_summary"]
         sentiment_report = state.get("sentiment_summary") or summarize_reports(state)["sentiment_summary"]
         news_report = state.get("news_summary") or summarize_reports(state)["news_summary"]
-        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_report"]
+        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_summary"]
 
         investment_debate_state = state["investment_debate_state"]
 
