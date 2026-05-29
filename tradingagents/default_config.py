@@ -72,6 +72,7 @@ DEFAULT_CONFIG = _apply_env_overrides({
     "output_language": "English",
     # Debate and discussion settings
     "max_debate_rounds": 1,
+    "debate_early_exit": True,
     "max_risk_discuss_rounds": 1,
     "max_recur_limit": 100,
     "analyst_concurrency_limit": 4,

@@ -1,0 +1,14 @@
+=== Test 1: BUY Extraction ===
+market_report: **Recommendation**: BUY
+Confidence: High
+Key facts: growth 20%
+
+Result:
+market_summary: Direction: Buy/Bullish
+Key facts:
+- **Recommendation**: BUY
+Confidence: High
+Key facts: growth 20%
+sentiment_summary: N/A: sentiment report unavailable
+news_summary: N/A: news report unavailable
+fundamentals_summary: N/A: fundamentals unavailable for crypto
