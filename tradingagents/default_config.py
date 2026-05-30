@@ -17,6 +17,7 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_MAX_RISK_ROUNDS":      "max_risk_discuss_rounds",
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
+    "TRADINGAGENTS_REDDIT_SUBREDDITS":    "reddit_subreddits",
 }
 
 
@@ -28,6 +29,9 @@ def _coerce(value: str, reference):
         return int(value)
     if isinstance(reference, float):
         return float(value)
+    if isinstance(reference, tuple):
+        parts = [p.strip() for p in value.split(",")]
+        return tuple(parts)
     return value
 
 
@@ -92,6 +96,7 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "ECB Bank of England BOJ central bank policy",
         "oil commodities supply chain energy",
     ],
+    "reddit_subreddits": ("wallstreetbets", "stocks", "investing", "StockMarket", "Options", "ValueInvesting"),
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {
