@@ -7,6 +7,7 @@ import os
 import json
 import time
 from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
+from tradingagents.logging import get_logger
 
 
 def _cached_or_fetch(symbol, cache_key, fetcher, ttl_hours=24):
@@ -213,7 +214,17 @@ def get_stock_stats_indicators_window(
             ind_string += f"{date_str}: {value}\n"
         
     except Exception as e:
-        print(f"Error getting bulk stockstats data: {e}")
+        print(f"Error getting bulk stockstats data for {symbol}/{indicator} on {curr_date}: {e}")
+        get_logger(__name__).error(
+            "Bulk stockstats failed, falling back to per-date indicator lookup",
+            symbol=symbol,
+            indicator=indicator,
+            curr_date=str(curr_date),
+            before=str(before),
+            end_date=str(end_date),
+            error_type=type(e).__name__,
+            error_msg=str(e),
+        )
         # Fallback to original implementation if bulk method fails
         ind_string = ""
         curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
@@ -247,6 +258,23 @@ def _get_stock_stats_bulk(
     from stockstats import wrap
 
     data = load_ohlcv(symbol, curr_date)
+
+    # Diagnostics before wrap() — helps debug "Invalid number of return
+    # arguments" errors from stockstats parsing column names.
+    _slog = get_logger(__name__)
+    _slog.info(
+        "Bulk stockstats: pre-wrap diagnostics",
+        symbol=symbol,
+        indicator=indicator,
+        curr_date=curr_date,
+        data_shape=str(data.shape) if hasattr(data, "shape") else "no-shape",
+        data_empty=str(data.empty) if hasattr(data, "empty") else "unknown",
+        columns=str(list(data.columns)) if hasattr(data, "columns") else "no-columns",
+        index_name=str(data.index.name) if hasattr(data.index, "name") else "no-index",
+        dtypes=str(data.dtypes.to_dict()) if hasattr(data, "dtypes") else "no-dtypes",
+        has_date_col=str("Date" in data.columns) if hasattr(data, "columns") else "unknown",
+    )
+
     # stockstats.wrap() requires date-indexed DataFrames and parses every
     # column name. Having 'Date' as a column triggers "Invalid number of
     # return arguments" errors. Set it as the index before wrapping.
