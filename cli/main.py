@@ -1039,6 +1039,7 @@ def run_analysis(
     anthropic_effort: Optional[str] = None,
     output_language: Optional[str] = None,
     risk_depth: Optional[int] = None,
+    analyst_concurrency_limit: Optional[int] = None,
 ):
     # First get all user selections
     selections = get_user_selections(

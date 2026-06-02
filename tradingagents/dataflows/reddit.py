@@ -22,16 +22,14 @@ from urllib.request import Request, urlopen
 
 logger = logging.getLogger(__name__)
 
+from tradingagents.default_config import DEFAULT_CONFIG
 from tradingagents.logging import get_logger
 _slog = get_logger(__name__)
 
+DEFAULT_SUBREDDITS = DEFAULT_CONFIG.get("reddit_subreddits", ("wallstreetbets", "stocks", "investing", "StockMarket", "Options", "ValueInvesting"))
+
 _API = "https://www.reddit.com/r/{sub}/search.json?{qs}"
 _UA = "tradingagents/0.2 (+https://github.com/TauricResearch/TradingAgents)"
-
-# Default subreddits ordered roughly by signal density for ticker-specific
-# discussion. wallstreetbets has the most volume but most noise; stocks /
-# investing trend more measured. Caller can override.
-DEFAULT_SUBREDDITS = ("wallstreetbets", "stocks", "investing")
 
 
 def _fetch_subreddit(

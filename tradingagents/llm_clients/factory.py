@@ -10,6 +10,7 @@ _OPENAI_COMPATIBLE = (
     "minimax", "minimax-cn",
     "ollama", "openrouter",
     "lm-studio",
+    "custom",
 )
 
 
