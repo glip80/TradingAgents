@@ -675,13 +675,13 @@ class TestPortfolioManagerInjection:
 
     def test_past_context_in_initial_state(self):
         propagator = Propagator()
-        state = propagator.create_initial_state("NVDA", "2026-01-10", past_context="some context")
+        state = propagator.create_initial_state("NVDA", "2026-01-10", past_context="some context", instrument_context="")
         assert "past_context" in state
         assert state["past_context"] == "some context"
 
     def test_past_context_defaults_to_empty(self):
         propagator = Propagator()
-        state = propagator.create_initial_state("NVDA", "2026-01-10")
+        state = propagator.create_initial_state("NVDA", "2026-01-10", instrument_context="")
         assert state["past_context"] == ""
 
     # PM prompt
