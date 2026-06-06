@@ -4,57 +4,8 @@ from dateutil.relativedelta import relativedelta
 import pandas as pd
 import yfinance as yf
 import os
-import json
-import time
 from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry, load_ohlcv, filter_financials_by_date
-from tradingagents.logging import get_logger
-
-
-def _cached_or_fetch(symbol, cache_key, fetcher, ttl_hours=24):
-    """Cache data to disk and return cached version if fresh enough."""
-    from .config import get_config
-    from .utils import safe_ticker_component
-
-    safe = safe_ticker_component(symbol)
-    config = get_config()
-    cache_ttl = config.get("fundamentals_cache_ttl_hours", ttl_hours)
-    cache_dir = config["data_cache_dir"]
-    cache_file = os.path.join(cache_dir, f"{safe}-{cache_key}.json")
-
-    if os.path.exists(cache_file):
-        file_age = time.time() - os.path.getmtime(cache_file)
-        if file_age < cache_ttl * 3600:
-            with open(cache_file) as f:
-                return json.load(f)
-
-    data = fetcher()
-
-    if data is not None and not (isinstance(data, (dict, list)) and len(data) == 0):
-        os.makedirs(cache_dir, exist_ok=True)
-        with open(cache_file, "w") as f:
-            json.dump(data, f, default=str)
-
-    return data
-
-
-def _financials_to_cacheable(df):
-    """Convert financial DataFrame to JSON-safe dict (handles Timestamp cols + NaN)."""
-    result = {}
-    for col in df.columns:
-        col_key = str(col)
-        result[col_key] = {}
-        for idx in df.index:
-            val = df.at[idx, col]
-            result[col_key][idx] = None if pd.isna(val) else val
-    return result
-
-
-def _financials_from_cacheable(d):
-    """Reconstruct DataFrame from JSON-safe dict."""
-    df = pd.DataFrame(d)
-    df.columns = pd.to_datetime(df.columns, errors="coerce")
-    return df
-
+from .symbol_utils import normalize_symbol, NoMarketDataError
 
 def get_YFin_data_online(
     symbol: Annotated[str, "ticker symbol of the company"],
@@ -65,16 +16,19 @@ def get_YFin_data_online(
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
 
-    # Create ticker object
-    ticker = yf.Ticker(symbol.upper())
+    # Resolve broker/forex symbols to Yahoo's convention (XAUUSD+ -> GC=F).
+    canonical = normalize_symbol(symbol)
+    ticker = yf.Ticker(canonical)
 
     # Fetch historical data for the specified date range
     data = yf_retry(lambda: ticker.history(start=start_date, end=end_date))
 
-    # Check if data is empty
+    # Empty result means the symbol is unknown/delisted. Raise a typed error
+    # instead of returning prose: the routing layer turns it into a single
+    # unambiguous "no data" signal so the agent never fabricates a price.
     if data.empty:
-        return (
-            f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
+        raise NoMarketDataError(
+            symbol, canonical, f"no rows between {start_date} and {end_date}"
         )
 
     # Remove timezone info from index for cleaner output
@@ -90,8 +44,10 @@ def get_YFin_data_online(
     # Convert DataFrame to CSV string
     csv_string = data.to_csv()
 
-    # Add header information
-    header = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n"
+    # Add header information; note the resolved symbol when it differs so the
+    # agent (and user) can see which instrument was actually priced.
+    label = canonical if canonical == symbol.upper() else f"{canonical} (from {symbol})"
+    header = f"# Stock data for {label} from {start_date} to {end_date}\n"
     header += f"# Total records: {len(data)}\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
@@ -212,19 +168,11 @@ def get_stock_stats_indicators_window(
         ind_string = ""
         for date_str, value in date_values:
             ind_string += f"{date_str}: {value}\n"
-        
+
+    except NoMarketDataError:
+        raise  # Unknown/delisted symbol — let the router emit the sentinel
     except Exception as e:
-        print(f"Error getting bulk stockstats data for {symbol}/{indicator} on {curr_date}: {e}")
-        get_logger(__name__).error(
-            "Bulk stockstats failed, falling back to per-date indicator lookup",
-            symbol=symbol,
-            indicator=indicator,
-            curr_date=str(curr_date),
-            before=str(before),
-            end_date=str(end_date),
-            error_type=type(e).__name__,
-            error_msg=str(e),
-        )
+        print(f"Error getting bulk stockstats data: {e}")
         # Fallback to original implementation if bulk method fails
         ind_string = ""
         curr_date_dt = datetime.strptime(curr_date, "%Y-%m-%d")
@@ -258,30 +206,7 @@ def _get_stock_stats_bulk(
     from stockstats import wrap
 
     data = load_ohlcv(symbol, curr_date)
-
-    # Diagnostics before wrap() — helps debug "Invalid number of return
-    # arguments" errors from stockstats parsing column names.
-    _slog = get_logger(__name__)
-    _slog.info(
-        "Bulk stockstats: pre-wrap diagnostics",
-        symbol=symbol,
-        indicator=indicator,
-        curr_date=curr_date,
-        data_shape=str(data.shape) if hasattr(data, "shape") else "no-shape",
-        data_empty=str(data.empty) if hasattr(data, "empty") else "unknown",
-        columns=str(list(data.columns)) if hasattr(data, "columns") else "no-columns",
-        index_name=str(data.index.name) if hasattr(data.index, "name") else "no-index",
-        dtypes=str(data.dtypes.to_dict()) if hasattr(data, "dtypes") else "no-dtypes",
-        has_date_col=str("Date" in data.columns) if hasattr(data, "columns") else "unknown",
-    )
-
-    # stockstats.wrap() requires date-indexed DataFrames and parses every
-    # column name. Having 'Date' as a column triggers "Invalid number of
-    # return arguments" errors. Set it as the index before wrapping.
-    if "Date" in data.columns:
-        data = data.set_index("Date")
     df = wrap(data)
-    df = df.reset_index()
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
     
     # Calculate the indicator for all rows at once
@@ -319,6 +244,8 @@ def get_stockstats_indicator(
             indicator,
             curr_date,
         )
+    except NoMarketDataError:
+        raise  # Unknown/delisted symbol — let the router emit the sentinel
     except Exception as e:
         print(
             f"Error getting stockstats indicator data for indicator {indicator} on {curr_date}: {e}"
@@ -331,21 +258,15 @@ def get_stockstats_indicator(
 def get_fundamentals(
     ticker: Annotated[str, "ticker symbol of the company"],
     curr_date: Annotated[str, "current date (not used for yfinance)"] = None
-) -> str:
-    """Get company fundamentals overview from yfinance.
-    
-    Returns:
-        Formatted string with fundamentals data or error message
-    """
+):
+    """Get company fundamentals overview from yfinance."""
+    canonical = normalize_symbol(ticker)
     try:
-        info = _cached_or_fetch(
-            ticker,
-            "info",
-            lambda: yf_retry(lambda: yf.Ticker(ticker.upper()).info),
-        )
+        ticker_obj = yf.Ticker(canonical)
+        info = yf_retry(lambda: ticker_obj.info)
 
         if not info:
-            return f"No fundamentals data found for symbol '{ticker}'"
+            raise NoMarketDataError(ticker, canonical, "no fundamentals returned")
 
         fields = [
             ("Name", info.get("longName")),
@@ -383,20 +304,22 @@ def get_fundamentals(
             if value is not None:
                 lines.append(f"{label}: {value}")
 
-        header = f"# Company Fundamentals for {ticker.upper()}\n"
+        # yfinance returns a stub dict (e.g. {"trailingPegRatio": None}) for
+        # unknown symbols, so `info` is truthy but every field is empty. Treat
+        # "no usable fields" as no data rather than emitting a bare header the
+        # agent might fabricate around.
+        if not lines:
+            raise NoMarketDataError(ticker, canonical, "no fundamental fields returned")
+
+        header = f"# Company Fundamentals for {canonical}\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
 
         return header + "\n".join(lines)
 
-    except (KeyError, AttributeError) as e:
-        # Missing fields or invalid ticker structure
-        return f"Invalid ticker or incomplete data for '{ticker}'"
-    except (ConnectionError, TimeoutError) as e:
-        # Network issues - can be retried
-        return f"Network error retrieving fundamentals for {ticker}. Please retry."
+    except NoMarketDataError:
+        raise
     except Exception as e:
-        # Unexpected errors
-        return f"Unexpected error retrieving fundamentals for {ticker}: {type(e).__name__}"
+        return f"Error retrieving fundamentals for {ticker}: {str(e)}"
 
 
 def get_balance_sheet(
@@ -405,32 +328,31 @@ def get_balance_sheet(
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
     """Get balance sheet data from yfinance."""
+    canonical = normalize_symbol(ticker)
     try:
-        def _fetch_bs():
-            t = yf.Ticker(ticker.upper())
-            if freq.lower() == "quarterly":
-                raw = yf_retry(lambda: t.quarterly_balance_sheet)
-            else:
-                raw = yf_retry(lambda: t.balance_sheet)
-            return _financials_to_cacheable(raw)
+        ticker_obj = yf.Ticker(canonical)
 
-        cache_key = f"balance_sheet_{freq.lower()}"
-        cached = _cached_or_fetch(ticker, cache_key, _fetch_bs)
-        data = _financials_from_cacheable(cached) if isinstance(cached, dict) else cached
+        if freq.lower() == "quarterly":
+            data = yf_retry(lambda: ticker_obj.quarterly_balance_sheet)
+        else:
+            data = yf_retry(lambda: ticker_obj.balance_sheet)
+
         data = filter_financials_by_date(data, curr_date)
 
         if data.empty:
-            return f"No balance sheet data found for symbol '{ticker}'"
-            
+            raise NoMarketDataError(ticker, canonical, "no balance sheet data")
+
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-        
+
         # Add header information
-        header = f"# Balance Sheet data for {ticker.upper()} ({freq})\n"
+        header = f"# Balance Sheet data for {canonical} ({freq})\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        
+
         return header + csv_string
-        
+
+    except NoMarketDataError:
+        raise
     except Exception as e:
         return f"Error retrieving balance sheet for {ticker}: {str(e)}"
 
@@ -441,32 +363,31 @@ def get_cashflow(
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
     """Get cash flow data from yfinance."""
+    canonical = normalize_symbol(ticker)
     try:
-        def _fetch_cf():
-            t = yf.Ticker(ticker.upper())
-            if freq.lower() == "quarterly":
-                raw = yf_retry(lambda: t.quarterly_cashflow)
-            else:
-                raw = yf_retry(lambda: t.cashflow)
-            return _financials_to_cacheable(raw)
+        ticker_obj = yf.Ticker(canonical)
 
-        cache_key = f"cashflow_{freq.lower()}"
-        cached = _cached_or_fetch(ticker, cache_key, _fetch_cf)
-        data = _financials_from_cacheable(cached) if isinstance(cached, dict) else cached
+        if freq.lower() == "quarterly":
+            data = yf_retry(lambda: ticker_obj.quarterly_cashflow)
+        else:
+            data = yf_retry(lambda: ticker_obj.cashflow)
+
         data = filter_financials_by_date(data, curr_date)
 
         if data.empty:
-            return f"No cash flow data found for symbol '{ticker}'"
-            
+            raise NoMarketDataError(ticker, canonical, "no cash flow data")
+
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-        
+
         # Add header information
-        header = f"# Cash Flow data for {ticker.upper()} ({freq})\n"
+        header = f"# Cash Flow data for {canonical} ({freq})\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        
+
         return header + csv_string
-        
+
+    except NoMarketDataError:
+        raise
     except Exception as e:
         return f"Error retrieving cash flow for {ticker}: {str(e)}"
 
@@ -477,32 +398,31 @@ def get_income_statement(
     curr_date: Annotated[str, "current date in YYYY-MM-DD format"] = None
 ):
     """Get income statement data from yfinance."""
+    canonical = normalize_symbol(ticker)
     try:
-        def _fetch_is():
-            t = yf.Ticker(ticker.upper())
-            if freq.lower() == "quarterly":
-                raw = yf_retry(lambda: t.quarterly_income_stmt)
-            else:
-                raw = yf_retry(lambda: t.income_stmt)
-            return _financials_to_cacheable(raw)
+        ticker_obj = yf.Ticker(canonical)
 
-        cache_key = f"income_statement_{freq.lower()}"
-        cached = _cached_or_fetch(ticker, cache_key, _fetch_is)
-        data = _financials_from_cacheable(cached) if isinstance(cached, dict) else cached
+        if freq.lower() == "quarterly":
+            data = yf_retry(lambda: ticker_obj.quarterly_income_stmt)
+        else:
+            data = yf_retry(lambda: ticker_obj.income_stmt)
+
         data = filter_financials_by_date(data, curr_date)
 
         if data.empty:
-            return f"No income statement data found for symbol '{ticker}'"
-            
+            raise NoMarketDataError(ticker, canonical, "no income statement data")
+
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-        
+
         # Add header information
-        header = f"# Income Statement data for {ticker.upper()} ({freq})\n"
+        header = f"# Income Statement data for {canonical} ({freq})\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-        
+
         return header + csv_string
-        
+
+    except NoMarketDataError:
+        raise
     except Exception as e:
         return f"Error retrieving income statement for {ticker}: {str(e)}"
 
@@ -511,18 +431,21 @@ def get_insider_transactions(
     ticker: Annotated[str, "ticker symbol of the company"]
 ):
     """Get insider transactions data from yfinance."""
+    canonical = normalize_symbol(ticker)
     try:
-        ticker_obj = yf.Ticker(ticker.upper())
+        ticker_obj = yf.Ticker(canonical)
         data = yf_retry(lambda: ticker_obj.insider_transactions)
-        
+
+        # Empty is normal here (many valid symbols have no insider filings),
+        # so report it plainly rather than treating the symbol as invalid.
         if data is None or data.empty:
-            return f"No insider transactions data found for symbol '{ticker}'"
-            
+            return f"No insider transactions reported for symbol '{canonical}'"
+
         # Convert to CSV string for consistency with other functions
         csv_string = data.to_csv()
-        
+
         # Add header information
-        header = f"# Insider Transactions data for {ticker.upper()}\n"
+        header = f"# Insider Transactions data for {canonical}\n"
         header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         
         return header + csv_string

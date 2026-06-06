@@ -1,5 +1,7 @@
-from tradingagents.agents.utils.agent_utils import get_language_instruction
-from tradingagents.agents.utils.report_summarizer import summarize_reports
+from tradingagents.agents.utils.agent_utils import (
+    get_instrument_context_from_state,
+    get_language_instruction,
+)
 
 
 def create_aggressive_debator(llm):
@@ -11,10 +13,11 @@ def create_aggressive_debator(llm):
         current_conservative_response = risk_debate_state.get("current_conservative_response", "")
         current_neutral_response = risk_debate_state.get("current_neutral_response", "")
 
-        market_research_report = state.get("market_summary") or summarize_reports(state)["market_summary"]
-        sentiment_report = state.get("sentiment_summary") or summarize_reports(state)["sentiment_summary"]
-        news_report = state.get("news_summary") or summarize_reports(state)["news_summary"]
-        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_summary"]
+        market_research_report = state["market_report"]
+        sentiment_report = state["sentiment_report"]
+        news_report = state["news_report"]
+        fundamentals_report = state["fundamentals_report"]
+        instrument_context = get_instrument_context_from_state(state)
 
         trader_decision = state["trader_investment_plan"]
 
@@ -24,6 +27,7 @@ def create_aggressive_debator(llm):
 
 Your task is to create a compelling case for the trader's decision by questioning and critiquing the conservative and neutral stances to demonstrate why your high-reward perspective offers the best path forward. Incorporate insights from the following sources into your arguments:
 
+{instrument_context}
 Market Research Report: {market_research_report}
 Social Media Sentiment Report: {sentiment_report}
 Latest World Affairs Report: {news_report}

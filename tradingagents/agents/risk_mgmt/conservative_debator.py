@@ -1,5 +1,7 @@
-from tradingagents.agents.utils.agent_utils import get_language_instruction
-from tradingagents.agents.utils.report_summarizer import summarize_reports
+from tradingagents.agents.utils.agent_utils import (
+    get_instrument_context_from_state,
+    get_language_instruction,
+)
 
 
 def create_conservative_debator(llm):
@@ -11,10 +13,11 @@ def create_conservative_debator(llm):
         current_aggressive_response = risk_debate_state.get("current_aggressive_response", "")
         current_neutral_response = risk_debate_state.get("current_neutral_response", "")
 
-        market_research_report = state.get("market_summary") or summarize_reports(state)["market_summary"]
-        sentiment_report = state.get("sentiment_summary") or summarize_reports(state)["sentiment_summary"]
-        news_report = state.get("news_summary") or summarize_reports(state)["news_summary"]
-        fundamentals_report = state.get("fundamentals_summary") or summarize_reports(state)["fundamentals_summary"]
+        market_research_report = state["market_report"]
+        sentiment_report = state["sentiment_report"]
+        news_report = state["news_report"]
+        fundamentals_report = state["fundamentals_report"]
+        instrument_context = get_instrument_context_from_state(state)
 
         trader_decision = state["trader_investment_plan"]
 
@@ -24,6 +27,7 @@ def create_conservative_debator(llm):
 
 Your task is to actively counter the arguments of the Aggressive and Neutral Analysts, highlighting where their views may overlook potential threats or fail to prioritize sustainability. Respond directly to their points, drawing from the following data sources to build a convincing case for a low-risk approach adjustment to the trader's decision:
 
+{instrument_context}
 Market Research Report: {market_research_report}
 Social Media Sentiment Report: {sentiment_report}
 Latest World Affairs Report: {news_report}
