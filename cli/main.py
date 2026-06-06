@@ -478,8 +478,24 @@ def get_user_selections(
     output_language: Optional[str] = None,
     risk_depth: Optional[int] = None,
 ):
-    """Get all user selections. Skips prompts if values are provided."""
-    
+    """Get all user selections. Reads from env vars when params not provided, otherwise prompts interactively."""
+
+    # Read env vars for any unset parameters so interactive prompts can be skipped.
+    env_llm = os.environ.get("TRADINGAGENTS_LLM_PROVIDER")
+    if llm_provider is None and env_llm:
+        llm_provider = env_llm
+    if backend_url is None and os.environ.get("TRADINGAGENTS_LLM_BACKEND_URL"):
+        backend_url = os.environ["TRADINGAGENTS_LLM_BACKEND_URL"]
+    if output_language is None and os.environ.get("TRADINGAGENTS_OUTPUT_LANGUAGE"):
+        output_language = os.environ["TRADINGAGENTS_OUTPUT_LANGUAGE"]
+    if shallow_thinker is None and os.environ.get("TRADINGAGENTS_QUICK_THINK_LLM"):
+        shallow_thinker = os.environ["TRADINGAGENTS_QUICK_THINK_LLM"]
+    if deep_thinker is None and os.environ.get("TRADINGAGENTS_DEEP_THINK_LLM"):
+        deep_thinker = os.environ["TRADINGAGENTS_DEEP_THINK_LLM"]
+    # When LLM provider came from env var, treat it as non-interactive and
+    # skip provider-specific prompts (reasoning effort, etc.)
+    llm_from_env = bool(env_llm)
+
     # If any parameter is missing, we might need to show the welcome screen
     # but only if we are in interactive mode (i.e., at least one prompt will happen)
     needs_prompts = any(v is None for v in [
@@ -639,10 +655,13 @@ def get_user_selections(
     if deep_thinker is None:
         deep_thinker = select_deep_thinking_agent(llm_provider)
 
-    # Step 8: Provider-specific thinking configuration
+    # Step 8: Provider-specific thinking configuration.
+    # Skip when LLM provider came from env var (non-interactive mode).
     provider_lower = llm_provider.lower()
     
-    if provider_lower == "google":
+    if llm_from_env:
+        pass  # skip provider-specific prompts in env-driven mode
+    elif provider_lower == "google":
         if google_thinking_level is None:
             console.print(
                 create_question_box(
@@ -1207,11 +1226,18 @@ def run_analysis(
         )
         update_display(layout, spinner_text, stats_handler=stats_handler, start_time=start_time)
 
-        # Initialize state and get graph args with callbacks
+        # Initialize state and get graph args with callbacks.
+        # Resolve the instrument identity once here so all agents anchor to
+        # the real company; the CLI builds state directly rather than going
+        # through propagate(), so this must happen on the CLI path too.
+        instrument_context = graph.resolve_instrument_context(
+            selections["ticker"], selections["asset_type"]
+        )
         init_agent_state = graph.propagator.create_initial_state(
             selections["ticker"],
             selections["analysis_date"],
             asset_type=selections["asset_type"],
+            instrument_context=instrument_context,
         )
         # Pass callbacks to graph config for tool execution tracking
         # (LLM tracking is handled separately via LLM constructor)
