@@ -217,7 +217,14 @@ __marimo__/
 
 # Cache
 **/data_cache/
+**/__cache__/
 
 # Enterprise env file (secrets) and generated run reports
 .env.enterprise
 reports/
+.DS_Store
+.gitnexus/
+.claude/
+.sisyphus/
+logs/
+node_modules/

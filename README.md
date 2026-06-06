@@ -196,6 +196,8 @@ You can also run the CLI with predefined parameters to skip interactive prompts.
 tradingagents analyze --ticker SPY --date 2026-05-28 --analyst market --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
 
 tradingagents --ticker SOXL --date 2026-05-27 --analyst market --analyst social --analyst news --depth 3 --provider deepseek --shallow-thinker deepseek-v4-pro --deep-thinker deepseek-v4-pro
+
+tradingagents --ticker nvda --analyst market --analyst social --analyst news --analyst fundamentals --depth 3 --provider custom --shallow-thinker oc-flash --deep-thinker oc-flash
 ```
 
 **Available Options:**
