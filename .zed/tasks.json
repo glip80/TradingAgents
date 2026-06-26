@@ -1,0 +1,11 @@
+[
+  // === GitNexus: Analyze (Build/Refresh Index) ===
+  {
+    "label": "GitNexus: Analyze",
+    "command": "gitnexus",
+    "args": ["analyze"],
+    "cwd": "/Users/alex/PycharmProjects/TradingAgents",
+    "use_new_terminal": true,
+    "tags": ["Dev", "Tools"],
+  },
+]
